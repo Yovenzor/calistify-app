@@ -5,20 +5,33 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import "./index.css";
+import { ActiveWorkoutProvider } from "./lib/session";
+import { AppShell } from "./components/AppShell";
 
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const Workouts = lazy(() => import("./pages/Workouts.tsx"));
+const WorkoutDetail = lazy(() => import("./pages/WorkoutDetail.tsx"));
+const NewWorkout = lazy(() => import("./pages/NewWorkout.tsx"));
+const ActiveWorkout = lazy(() => import("./pages/ActiveWorkout.tsx"));
+const Exercises = lazy(() => import("./pages/Exercises.tsx"));
+const ExerciseDetail = lazy(() => import("./pages/ExerciseDetail.tsx"));
+const Progress = lazy(() => import("./pages/Progress.tsx"));
+const Records = lazy(() => import("./pages/Records.tsx"));
+const Skills = lazy(() => import("./pages/Skills.tsx"));
+const Profile = lazy(() => import("./pages/Profile.tsx"));
+const Settings = lazy(() => import("./pages/Settings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-pulse text-muted-foreground">Loading...</div>
+    <div className="min-h-dvh flex items-center justify-center">
+      <div className="size-6 animate-spin rounded-full border-2 border-border border-t-primary" />
     </div>
   );
 }
@@ -54,20 +67,20 @@ class RootErrorBoundary extends React.Component<
       stack: error.stack || "",
     };
   }
-  componentDidCatch(err: Error) {
-    console.error("[Preview] Root crash:", err);
+  componentDidCatch(error: Error) {
+    console.error("[Preview] Root crash:", error);
   }
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
+        <div className="min-h-dvh flex items-center justify-center bg-background p-6 text-foreground">
           <div className="max-w-lg text-center">
             <p className="text-sm font-semibold">Preview runtime error</p>
-            <p className="mt-2 text-xs text-muted-foreground break-words">
+            <p className="mt-2 break-words text-xs text-muted-foreground">
               {this.state.message}
             </p>
             {this.state.stack && (
-              <pre className="mt-3 text-left text-[10px] leading-4 text-muted-foreground/80 max-h-40 overflow-auto rounded border border-border/60 p-2">
+              <pre className="mt-3 max-h-40 overflow-auto rounded border border-border/60 p-2 text-[10px] leading-4 text-muted-foreground/80">
                 {this.state.stack}
               </pre>
             )}
@@ -80,8 +93,6 @@ class RootErrorBoundary extends React.Component<
 }
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
-
-
 
 function RouteSyncer() {
   const location = useLocation();
@@ -106,7 +117,6 @@ function RouteSyncer() {
   return null;
 }
 
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RootErrorBoundary>
@@ -116,24 +126,42 @@ createRoot(document.getElementById("root")!).render(
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
           <RouteSyncer />
-          <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route
-                path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+          <ActiveWorkoutProvider>
+            <Suspense fallback={<RouteLoading />}>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route
+                  path="/auth"
+                  element={<AuthPage redirectAfterAuth="/app" />}
+                />
+                <Route path="/dashboard" element={<Navigate to="/app" replace />} />
+
+                <Route
+                  path="/app"
+                  element={
+                    <RequireAuth redirectImmediately>
+                      <AppShell />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path="workouts" element={<Workouts />} />
+                  <Route path="workouts/:id" element={<WorkoutDetail />} />
+                  <Route path="workout/new" element={<NewWorkout />} />
+                  <Route path="workout/active" element={<ActiveWorkout />} />
+                  <Route path="exercises" element={<Exercises />} />
+                  <Route path="exercises/:id" element={<ExerciseDetail />} />
+                  <Route path="progress" element={<Progress />} />
+                  <Route path="records" element={<Records />} />
+                  <Route path="skills" element={<Skills />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </ActiveWorkoutProvider>
         </BrowserRouter>
         <Toaster />
       </ConvexAuthProvider>
