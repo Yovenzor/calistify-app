@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { SectionLabel } from "@/components/AppUI";
+import { HealthConnect } from "@/components/HealthConnect";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -138,7 +139,10 @@ export default function Profile() {
       <div className="flex flex-col items-center rounded-2xl border border-border bg-card px-5 py-7">
         <div className="relative">
           <Avatar className="size-24 border-2 border-primary/40">
-            <AvatarImage src={profile.imageUrl ?? undefined} alt={profile.name} />
+            <AvatarImage
+              src={profile.imageUrl ?? undefined}
+              alt={profile.name}
+            />
             <AvatarFallback className="bg-secondary text-2xl font-bold text-primary">
               {initials}
             </AvatarFallback>
@@ -165,7 +169,9 @@ export default function Profile() {
           />
         </div>
 
-        <p className="mt-4 text-[22px] font-bold tracking-tight">{profile.name}</p>
+        <p className="mt-4 text-[22px] font-bold tracking-tight">
+          {profile.name}
+        </p>
         <p className="text-[11px] tracking-[0.16em] text-primary uppercase">
           Athlete
         </p>
@@ -186,7 +192,9 @@ export default function Profile() {
             </p>
           </div>
           <div className="rounded-xl bg-secondary py-3">
-            <p className="num text-[17px] font-bold">{athlete.records.length}</p>
+            <p className="num text-[17px] font-bold">
+              {athlete.records.length}
+            </p>
             <p className="text-[9px] tracking-[0.06em] text-muted-foreground uppercase">
               PRs
             </p>
@@ -242,6 +250,9 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Health connection — Apple Health import */}
+      <HealthConnect />
+
       {/* Links */}
       <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border bg-card">
         <LinkRow to="/app/skills" label="Skills" />
@@ -289,7 +300,9 @@ export default function Profile() {
                   <FieldLabel>Bodyweight</FieldLabel>
                   <Input
                     value={form.weight}
-                    onChange={(e) => setForm({ ...form, weight: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, weight: e.target.value })
+                    }
                     inputMode="decimal"
                     placeholder={form.unit === "kg" ? "72" : "159"}
                     className="h-11 border-border bg-[#0c0c0c] focus-visible:ring-primary/30"
@@ -348,7 +361,10 @@ export default function Profile() {
                       setForm({
                         ...form,
                         weeklyGoal: String(
-                          Math.min(14, (parseInt(form.weeklyGoal, 10) || 0) + 1),
+                          Math.min(
+                            14,
+                            (parseInt(form.weeklyGoal, 10) || 0) + 1,
+                          ),
                         ),
                       })
                     }
@@ -360,8 +376,8 @@ export default function Profile() {
               </div>
 
               <p className="text-[11px] leading-4 text-muted-foreground">
-                Changing your bodyweight adds today to your weight history — past
-                workout volumes stay accurate.
+                Changing your bodyweight adds today to your weight history —
+                past workout volumes stay accurate.
               </p>
 
               <div className="flex gap-3 pt-1">

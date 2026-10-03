@@ -142,6 +142,22 @@ const schema = defineSchema(
       exerciseIds: v.array(v.string()),
       createdAt: v.number(),
     }).index("by_user", ["userId"]),
+
+    /* Daily health metrics imported from the user's own health app export
+       (Apple Health export.xml). Only aggregated day totals are stored —
+       the raw export file never leaves the device. */
+    healthDaily: defineTable({
+      userId: v.id("users"),
+      date: v.string(), // YYYY-MM-DD (user's local day)
+      steps: v.optional(v.number()),
+      activeKcal: v.optional(v.number()),
+      basalKcal: v.optional(v.number()),
+      exerciseMin: v.optional(v.number()),
+      sleepMin: v.optional(v.number()),
+      restingHr: v.optional(v.number()),
+      source: v.string(), // "apple_health"
+      importedAt: v.number(),
+    }).index("by_user_date", ["userId", "date"]),
   },
   {
     schemaValidation: false,
