@@ -19,7 +19,11 @@ const HAIR_FILL = "#4a4a4a";
 const GROOVE = "#3d3d3d";
 
 /** Resting muscle is bright anatomical gray; trained muscles blend to lime. */
-function mix(a: [number, number, number], b: [number, number, number], t: number) {
+function mix(
+  a: [number, number, number],
+  b: [number, number, number],
+  t: number,
+) {
   const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
   return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 }
@@ -38,7 +42,13 @@ function volume(d: string): ReactNode {
 function staticPath(d: string, fill = STATIC_FILL, shaded = true): ReactNode {
   return (
     <>
-      <path d={d} fill={fill} stroke={GROOVE} strokeOpacity={0.4} strokeWidth={0.8} />
+      <path
+        d={d}
+        fill={fill}
+        stroke={GROOVE}
+        strokeOpacity={0.4}
+        strokeWidth={0.8}
+      />
       {shaded && volume(d)}
     </>
   );
@@ -60,7 +70,13 @@ function grooveLine(d: string, opacity = 0.5, width = 1): ReactNode {
 }
 
 /** Blurred occlusion shadow — armpits, under-chin, gluteal fold. */
-function shadow(cx: number, cy: number, rx: number, ry: number, opacity: number): ReactNode {
+function shadow(
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  opacity: number,
+): ReactNode {
   return (
     <ellipse
       cx={cx}
@@ -75,14 +91,103 @@ function shadow(cx: number, cy: number, rx: number, ry: number, opacity: number)
   );
 }
 
+/* ── the exact reference render lives in public/ (drop the file in) ────── */
+const PLATE_FILES = [
+  "muscle-anatomy.png",
+  "muscle-anatomy.jpg",
+  "muscle-anatomy.jpeg",
+  "muscle-anatomy.webp",
+];
+
+interface ZoneBlob {
+  /** all values are % of the plate: cx/rx of width, cy/ry of height */
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  rot?: number;
+}
+
 /**
- * Front + back anatomical plate rendered like a 3D écorché study: white
- * muscle bellies on pure black, V-taper physique, arms hanging beside the
- * body and legs apart. Every catalog muscle stays individually selectable and
- * activation color comes only from real logged sets.
+ * Interactive muscle zones traced over the reference plate: front figure on
+ * the left, back figure on the right. Multiple blobs per muscle let one id
+ * cover both views (forearms) or both limbs.
+ */
+const ZONES: Record<MuscleGroup, ZoneBlob[]> = {
+  /* front figure */
+  neck: [{ cx: 28, cy: 15.5, rx: 4, ry: 2.6 }],
+  chest: [
+    { cx: 24.2, cy: 26, rx: 5, ry: 4.6 },
+    { cx: 31.8, cy: 26, rx: 5, ry: 4.6 },
+  ],
+  front_delts: [
+    { cx: 20, cy: 23, rx: 4, ry: 4.6 },
+    { cx: 36, cy: 23, rx: 4, ry: 4.6 },
+  ],
+  biceps: [
+    { cx: 18.3, cy: 33, rx: 2.9, ry: 6.4, rot: -4 },
+    { cx: 37.7, cy: 33, rx: 2.9, ry: 6.4, rot: 4 },
+  ],
+  forearms: [
+    { cx: 17.2, cy: 45.5, rx: 2.6, ry: 6, rot: -3 },
+    { cx: 38.8, cy: 45.5, rx: 2.6, ry: 6, rot: 3 },
+    { cx: 61.2, cy: 45.5, rx: 2.6, ry: 6, rot: 3 },
+    { cx: 82.8, cy: 45.5, rx: 2.6, ry: 6, rot: -3 },
+  ],
+  abs: [{ cx: 28, cy: 38, rx: 3.4, ry: 7.4 }],
+  obliques: [
+    { cx: 23.4, cy: 40, rx: 2.2, ry: 6 },
+    { cx: 32.6, cy: 40, rx: 2.2, ry: 6 },
+  ],
+  quads: [
+    { cx: 21.5, cy: 60.5, rx: 4, ry: 8.6 },
+    { cx: 34.5, cy: 60.5, rx: 4, ry: 8.6 },
+  ],
+  /* back figure */
+  traps: [{ cx: 72.5, cy: 19.5, rx: 7.4, ry: 5 }],
+  rear_delts: [
+    { cx: 64, cy: 23, rx: 4, ry: 4.6 },
+    { cx: 81, cy: 23, rx: 4, ry: 4.6 },
+  ],
+  lats: [
+    { cx: 66.8, cy: 32, rx: 3.6, ry: 7.4 },
+    { cx: 78.2, cy: 32, rx: 3.6, ry: 7.4 },
+  ],
+  triceps: [
+    { cx: 62.3, cy: 33, rx: 2.9, ry: 6.4, rot: 4 },
+    { cx: 81.7, cy: 33, rx: 2.9, ry: 6.4, rot: -4 },
+  ],
+  lower_back: [{ cx: 72.5, cy: 44.5, rx: 3.4, ry: 4.6 }],
+  glutes: [
+    { cx: 68, cy: 52.5, rx: 3.7, ry: 4.5 },
+    { cx: 77, cy: 52.5, rx: 3.7, ry: 4.5 },
+  ],
+  hamstrings: [
+    { cx: 65.5, cy: 62.5, rx: 3.9, ry: 6.6 },
+    { cx: 79.5, cy: 62.5, rx: 3.9, ry: 6.6 },
+  ],
+  calves: [
+    { cx: 65.5, cy: 79, rx: 3.3, ry: 7 },
+    { cx: 79.5, cy: 79, rx: 3.3, ry: 7 },
+  ],
+};
+
+/*
+ * Muscle map plate. Renders the exact reference render from public/ with
+ * interactive zones layered on top; if the file is not there yet, the drawn
+ * SVG study below is used so the card never renders empty. Every catalog
+ * muscle stays individually selectable and activation color comes only from
+ * real logged sets.
  */
 export function MuscleMap({ activation }: { activation: Activation[] }) {
   const [selected, setSelected] = useState<MuscleGroup | null>(null);
+  /* plate loading: walk the candidate filenames until one resolves */
+  const [plateIdx, setPlateIdx] = useState(0);
+  const [plateDims, setPlateDims] = useState<{ w: number; h: number } | null>(
+    null,
+  );
+  const plateFailed = plateIdx >= PLATE_FILES.length;
+  const plateSrc = `/${PLATE_FILES[plateIdx] ?? ""}`;
   const byId = new Map(activation.map((a) => [a.id, a]));
 
   const fillFor = (id: MuscleGroup) => {
@@ -123,76 +228,160 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
 
   return (
     <div>
-      <svg
-        viewBox="0 0 440 614"
-        className="h-auto w-full"
-        role="img"
-        aria-label="Front and back muscular anatomy, rendered study"
-      >
-        <defs>
-          {/* limb + torso base: lit from the upper left */}
-          <linearGradient id="mm-body" x1="0" y1="0" x2="1" y2="0.3">
-            <stop offset="0" stopColor="#d2d2d2" />
-            <stop offset="0.45" stopColor="#a8a8a8" />
-            <stop offset="1" stopColor="#7f7f7f" />
-          </linearGradient>
-          <linearGradient id="mm-head" x1="0.2" y1="0" x2="0.8" y2="1">
-            <stop offset="0" stopColor="#e6e6e6" />
-            <stop offset="1" stopColor="#a4a4a4" />
-          </linearGradient>
-          {/* directional shade: gentle highlight top-left, shadow bottom-right */}
-          <linearGradient id="mm-shade" x1="0.1" y1="0" x2="0.9" y2="1">
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.22" />
-            <stop offset="0.38" stopColor="#ffffff" stopOpacity="0.03" />
-            <stop offset="0.66" stopColor="#000000" stopOpacity="0.05" />
-            <stop offset="1" stopColor="#000000" stopOpacity="0.24" />
-          </linearGradient>
-          {/* soft round highlight over every belly — airbrushed volume */}
-          <radialGradient id="mm-glow" cx="0.36" cy="0.26" r="0.72">
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.32" />
-            <stop offset="0.45" stopColor="#ffffff" stopOpacity="0.1" />
-            <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
-          </radialGradient>
-          <filter id="mm-soft" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="3.2" />
-          </filter>
-        </defs>
+      {plateFailed ? (
+        <svg
+          viewBox="0 0 440 614"
+          className="h-auto w-full"
+          role="img"
+          aria-label="Front and back muscular anatomy, rendered study"
+        >
+          <defs>
+            {/* limb + torso base: lit from the upper left */}
+            <linearGradient id="mm-body" x1="0" y1="0" x2="1" y2="0.3">
+              <stop offset="0" stopColor="#d2d2d2" />
+              <stop offset="0.45" stopColor="#a8a8a8" />
+              <stop offset="1" stopColor="#7f7f7f" />
+            </linearGradient>
+            <linearGradient id="mm-head" x1="0.2" y1="0" x2="0.8" y2="1">
+              <stop offset="0" stopColor="#e6e6e6" />
+              <stop offset="1" stopColor="#a4a4a4" />
+            </linearGradient>
+            {/* directional shade: gentle highlight top-left, shadow bottom-right */}
+            <linearGradient id="mm-shade" x1="0.1" y1="0" x2="0.9" y2="1">
+              <stop offset="0" stopColor="#ffffff" stopOpacity="0.22" />
+              <stop offset="0.38" stopColor="#ffffff" stopOpacity="0.03" />
+              <stop offset="0.66" stopColor="#000000" stopOpacity="0.05" />
+              <stop offset="1" stopColor="#000000" stopOpacity="0.24" />
+            </linearGradient>
+            {/* soft round highlight over every belly — airbrushed volume */}
+            <radialGradient id="mm-glow" cx="0.36" cy="0.26" r="0.72">
+              <stop offset="0" stopColor="#ffffff" stopOpacity="0.32" />
+              <stop offset="0.45" stopColor="#ffffff" stopOpacity="0.1" />
+              <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+            </radialGradient>
+            <filter id="mm-soft" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="3.2" />
+            </filter>
+          </defs>
 
-        {/* pure black stage like the reference plate */}
-        <rect x="0" y="0" width="440" height="614" fill="#000000" />
+          {/* pure black stage like the reference plate */}
+          <rect x="0" y="0" width="440" height="614" fill="#000000" />
 
-        {/* ══════════ FRONT FIGURE (center x = 107) ══════════ */}
-        <BodyCore />
-        <FrontSide mp={mp} />
-        <g transform="translate(214,0) scale(-1,1)">
-          <FrontSide mp={mp} />
-        </g>
-        <FrontGrooves />
-        <g transform="translate(214,0) scale(-1,1)">
-          <FrontGrooves />
-        </g>
-        <FrontDetail />
-
-        {/* ══════════ BACK FIGURE (center x = 329) ══════════ */}
-        <g transform="translate(222,0)">
+          {/* ══════════ FRONT FIGURE (center x = 107) ══════════ */}
           <BodyCore />
-        </g>
-        <BackSide mp={mp} />
-        <g transform="translate(658,0) scale(-1,1)">
+          <FrontSide mp={mp} />
+          <g transform="translate(214,0) scale(-1,1)">
+            <FrontSide mp={mp} />
+          </g>
+          <FrontGrooves />
+          <g transform="translate(214,0) scale(-1,1)">
+            <FrontGrooves />
+          </g>
+          <FrontDetail />
+
+          {/* ══════════ BACK FIGURE (center x = 329) ══════════ */}
+          <g transform="translate(222,0)">
+            <BodyCore />
+          </g>
           <BackSide mp={mp} />
-        </g>
-        <BackGrooves />
-        <g transform="translate(658,0) scale(-1,1)">
+          <g transform="translate(658,0) scale(-1,1)">
+            <BackSide mp={mp} />
+          </g>
           <BackGrooves />
-        </g>
-        <BackDetail />
-      </svg>
+          <g transform="translate(658,0) scale(-1,1)">
+            <BackGrooves />
+          </g>
+          <BackDetail />
+        </svg>
+      ) : (
+        <div className="relative">
+          <img
+            src={plateSrc}
+            alt="Anatomical muscle study — front and back views"
+            className="block w-full select-none bg-black"
+            style={{ minHeight: 220 }}
+            draggable={false}
+            onLoad={(e) =>
+              setPlateDims({
+                w: e.currentTarget.naturalWidth,
+                h: e.currentTarget.naturalHeight,
+              })
+            }
+            onError={() => {
+              setPlateDims(null);
+              setPlateIdx((i) => i + 1);
+            }}
+          />
+          {plateDims && (
+            <svg
+              viewBox={`0 0 ${plateDims.w} ${plateDims.h}`}
+              className="absolute inset-0 h-full w-full"
+              role="img"
+              aria-label="Muscle activation zones"
+            >
+              {MUSCLES.map((m) => {
+                const a = byId.get(m.id);
+                const ratio = a?.ratio ?? 0;
+                const trained = a !== undefined && a.score > 0;
+                const isSel = selected === m.id;
+                return (
+                  <g key={m.id}>
+                    {ZONES[m.id].map((z, i) => {
+                      const cx = (z.cx / 100) * plateDims.w;
+                      const cy = (z.cy / 100) * plateDims.h;
+                      const rx = (z.rx / 100) * plateDims.w;
+                      const ry = (z.ry / 100) * plateDims.h;
+                      return (
+                        <ellipse
+                          key={i}
+                          cx={cx}
+                          cy={cy}
+                          rx={rx}
+                          ry={ry}
+                          transform={
+                            z.rot ? `rotate(${z.rot} ${cx} ${cy})` : undefined
+                          }
+                          fill={trained ? "#b6ff00" : "none"}
+                          fillOpacity={
+                            trained ? 0.3 + 0.5 * Math.min(1, ratio) : 0
+                          }
+                          stroke={
+                            isSel ? "#b6ff00" : trained ? "#b6ff00" : "#ffffff"
+                          }
+                          strokeOpacity={isSel ? 1 : trained ? 0.7 : 0.18}
+                          strokeWidth={
+                            isSel ? plateDims.w / 170 : plateDims.w / 480
+                          }
+                          strokeLinejoin="round"
+                          pointerEvents="all"
+                          className="cursor-pointer transition-all duration-300"
+                          style={
+                            isSel
+                              ? {
+                                  filter:
+                                    "drop-shadow(0 0 6px rgba(182,255,0,0.65))",
+                                }
+                              : undefined
+                          }
+                          onClick={() => setSelected(isSel ? null : m.id)}
+                        />
+                      );
+                    })}
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+        </div>
+      )}
 
       <div className="mt-3 rounded-xl border border-border bg-card px-4 py-3">
         {selectedMuscle ? (
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[13px] font-semibold">{selectedMuscle.label}</p>
+              <p className="text-[13px] font-semibold">
+                {selectedMuscle.label}
+              </p>
               <p className="text-[11px] text-muted-foreground">
                 {selectedData && selectedData.score > 0
                   ? "trained from your logged sets"
@@ -567,8 +756,22 @@ function BackDetail() {
       {grooveLine("M320,256 L338,256", 0.45)}
       {grooveLine("M321,278 L337,278", 0.4)}
       {/* dimples of venus */}
-      <ellipse cx="321" cy="288" rx="1.8" ry="2.2" fill={GROOVE} opacity={0.6} />
-      <ellipse cx="337" cy="288" rx="1.8" ry="2.2" fill={GROOVE} opacity={0.6} />
+      <ellipse
+        cx="321"
+        cy="288"
+        rx="1.8"
+        ry="2.2"
+        fill={GROOVE}
+        opacity={0.6}
+      />
+      <ellipse
+        cx="337"
+        cy="288"
+        rx="1.8"
+        ry="2.2"
+        fill={GROOVE}
+        opacity={0.6}
+      />
       {/* occlusion shadows */}
       {shadow(329, 84, 20, 6, 0.38)}
       {shadow(279, 160, 6, 9, 0.35)}
