@@ -10,40 +10,42 @@ interface Activation {
 /** Renders one interactive muscle path; bound to MuscleMap state via props. */
 type MusclePath = (id: MuscleGroup, d: string) => ReactNode;
 
-/* ── palette ──────────────────────────────────────────────────────────── */
+/* ── palette: near-white muscle bellies on pure black, like the render ── */
 const LIME: [number, number, number] = [182, 255, 0];
-const GRAY: [number, number, number] = [210, 210, 210];
-const REST_FILL = "#dcdcdc";
-const STATIC_FILL = "#c9c9c9";
-const HAIR_FILL = "#585858";
-const GROOVE = "#0d0d0d";;
+const GRAY: [number, number, number] = [214, 214, 214];
+const REST_FILL = "#e9e9e9";
+const STATIC_FILL = "#d8d8d8";
+const HAIR_FILL = "#4a4a4a";
+const GROOVE = "#3d3d3d";
 
-/** Resting muscle is anatomical gray; trained muscles blend toward lime. */
+/** Resting muscle is bright anatomical gray; trained muscles blend to lime. */
 function mix(a: [number, number, number], b: [number, number, number], t: number) {
   const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
   return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 }
 
-/** Non-interactive anatomical detail (serratus, adductor, hair, hands...). */
-function staticPath(d: string, fill = STATIC_FILL, bump = true): ReactNode {
-  if (!bump) return <path d={d} fill={fill} />;
+/** Soft airbrushed volume: radial highlight + directional shade over a fill. */
+function volume(d: string): ReactNode {
   return (
     <>
-      <path
-        d={d}
-        fill={fill}
-        stroke={GROOVE}
-        strokeOpacity={0.5}
-        strokeWidth={0.9}
-        filter="url(#mm-3d)"
-      />
+      <path d={d} fill="url(#mm-glow)" style={{ pointerEvents: "none" }} />
       <path d={d} fill="url(#mm-shade)" style={{ pointerEvents: "none" }} />
     </>
   );
 }
 
+/** Non-interactive anatomical detail (serratus, adductor, hair, hands...). */
+function staticPath(d: string, fill = STATIC_FILL, shaded = true): ReactNode {
+  return (
+    <>
+      <path d={d} fill={fill} stroke={GROOVE} strokeOpacity={0.4} strokeWidth={0.8} />
+      {shaded && volume(d)}
+    </>
+  );
+}
+
 /** Dark muscle groove / striation line (pointer-transparent). */
-function grooveLine(d: string, opacity = 0.62, width = 1.15): ReactNode {
+function grooveLine(d: string, opacity = 0.5, width = 1): ReactNode {
   return (
     <path
       d={d}
@@ -57,10 +59,27 @@ function grooveLine(d: string, opacity = 0.62, width = 1.15): ReactNode {
   );
 }
 
+/** Blurred occlusion shadow — armpits, under-chin, gluteal fold. */
+function shadow(cx: number, cy: number, rx: number, ry: number, opacity: number): ReactNode {
+  return (
+    <ellipse
+      cx={cx}
+      cy={cy}
+      rx={rx}
+      ry={ry}
+      fill="#000000"
+      opacity={opacity}
+      filter="url(#mm-soft)"
+      style={{ pointerEvents: "none" }}
+    />
+  );
+}
+
 /**
- * Detailed front + back anatomical plate. Both views are shown at once; every
- * catalog muscle is an individually selectable path whose color intensity comes
- * from real logged activation (0 = neutral gray, never faked).
+ * Front + back anatomical plate rendered like a 3D écorché study: white
+ * muscle bellies on pure black, V-taper physique, arms hanging beside the
+ * body and legs apart. Every catalog muscle stays individually selectable and
+ * activation color comes only from real logged sets.
  */
 export function MuscleMap({ activation }: { activation: Activation[] }) {
   const [selected, setSelected] = useState<MuscleGroup | null>(null);
@@ -81,22 +100,17 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
           d={d}
           fill={fillFor(id)}
           stroke={isSel ? "#b6ff00" : GROOVE}
-          strokeOpacity={isSel ? 1 : 0.7}
-          strokeWidth={isSel ? 2.2 : 1.4}
+          strokeOpacity={isSel ? 1 : 0.6}
+          strokeWidth={isSel ? 2.2 : 1.2}
           className="cursor-pointer transition-all duration-300"
           onClick={() => setSelected(isSel ? null : id)}
-          filter={isSel ? undefined : "url(#mm-3d)"}
           style={
             isSel
-              ? {
-                  filter:
-                    "url(#mm-3d) drop-shadow(0 0 6px rgba(182,255,0,0.6))",
-                }
+              ? { filter: "drop-shadow(0 0 6px rgba(182,255,0,0.65))" }
               : undefined
           }
         />
-        {/* volume overlay: lit top-left, shadowed bottom-right */}
-        <path d={d} fill="url(#mm-shade)" style={{ pointerEvents: "none" }} />
+        {volume(d)}
       </>
     );
   };
@@ -110,104 +124,68 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
   return (
     <div>
       <svg
-        viewBox="0 0 440 652"
+        viewBox="0 0 440 614"
         className="h-auto w-full"
         role="img"
-        aria-label="Anatomical muscle map with detailed front and back views"
+        aria-label="Front and back muscular anatomy, rendered study"
       >
         <defs>
-          {/* dark silhouette base — light muscle bellies pop against it */}
-          <linearGradient id="mm-body" x1="0" y1="0" x2="1" y2="0.25">
-            <stop offset="0" stopColor="#6d6d6d" />
-            <stop offset="0.45" stopColor="#4e4e4e" />
-            <stop offset="1" stopColor="#353535" />
+          {/* limb + torso base: lit from the upper left */}
+          <linearGradient id="mm-body" x1="0" y1="0" x2="1" y2="0.3">
+            <stop offset="0" stopColor="#d2d2d2" />
+            <stop offset="0.45" stopColor="#a8a8a8" />
+            <stop offset="1" stopColor="#7f7f7f" />
           </linearGradient>
-          <linearGradient id="mm-head" x1="0.15" y1="0" x2="0.85" y2="1">
-            <stop offset="0" stopColor="#d9d9d9" />
-            <stop offset="1" stopColor="#9b9b9b" />
+          <linearGradient id="mm-head" x1="0.2" y1="0" x2="0.8" y2="1">
+            <stop offset="0" stopColor="#e6e6e6" />
+            <stop offset="1" stopColor="#a4a4a4" />
           </linearGradient>
-          {/* per-muscle volume: highlight top-left, shadow bottom-right */}
-          <linearGradient id="mm-shade" x1="0.05" y1="0" x2="0.9" y2="1">
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.3" />
-            <stop offset="0.35" stopColor="#ffffff" stopOpacity="0.05" />
-            <stop offset="0.62" stopColor="#000000" stopOpacity="0.08" />
-            <stop offset="1" stopColor="#000000" stopOpacity="0.38" />
+          {/* directional shade: gentle highlight top-left, shadow bottom-right */}
+          <linearGradient id="mm-shade" x1="0.1" y1="0" x2="0.9" y2="1">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.22" />
+            <stop offset="0.38" stopColor="#ffffff" stopOpacity="0.03" />
+            <stop offset="0.66" stopColor="#000000" stopOpacity="0.05" />
+            <stop offset="1" stopColor="#000000" stopOpacity="0.24" />
           </linearGradient>
-          {/* beveled relief: flat fills read as rendered 3D muscle bellies */}
-          <filter id="mm-3d" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="soft" />
-            <feSpecularLighting
-              in="soft"
-              surfaceScale="3.5"
-              specularConstant="0.7"
-              specularExponent="22"
-              lightingColor="#ffffff"
-              result="spec"
-            >
-              <feDistantLight azimuth="225" elevation="55" />
-            </feSpecularLighting>
-            <feComposite in="spec" in2="SourceAlpha" operator="in" result="clip" />
-            <feComposite
-              in="SourceGraphic"
-              in2="clip"
-              operator="arithmetic"
-              k1="0"
-              k2="1"
-              k3="1"
-              k4="0"
-            />
+          {/* soft round highlight over every belly — airbrushed volume */}
+          <radialGradient id="mm-glow" cx="0.36" cy="0.26" r="0.72">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.32" />
+            <stop offset="0.45" stopColor="#ffffff" stopOpacity="0.1" />
+            <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+          </radialGradient>
+          <filter id="mm-soft" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="3.2" />
           </filter>
         </defs>
 
-        {/* ══════════ FRONT FIGURE (center x = 115) ══════════ */}
+        {/* pure black stage like the reference plate */}
+        <rect x="0" y="0" width="440" height="614" fill="#000000" />
+
+        {/* ══════════ FRONT FIGURE (center x = 107) ══════════ */}
         <BodyCore />
         <FrontSide mp={mp} />
-        <g transform="translate(230,0) scale(-1,1)">
+        <g transform="translate(214,0) scale(-1,1)">
           <FrontSide mp={mp} />
         </g>
         <FrontGrooves />
-        <g transform="translate(230,0) scale(-1,1)">
+        <g transform="translate(214,0) scale(-1,1)">
           <FrontGrooves />
         </g>
-        <FrontMidline />
+        <FrontDetail />
 
-        {/* ══════════ BACK FIGURE (center x = 325) ══════════ */}
-        <g transform="translate(210,0)">
+        {/* ══════════ BACK FIGURE (center x = 329) ══════════ */}
+        <g transform="translate(222,0)">
           <BodyCore />
         </g>
         <BackSide mp={mp} />
-        <g transform="translate(650,0) scale(-1,1)">
+        <g transform="translate(658,0) scale(-1,1)">
           <BackSide mp={mp} />
         </g>
         <BackGrooves />
-        <g transform="translate(650,0) scale(-1,1)">
+        <g transform="translate(658,0) scale(-1,1)">
           <BackGrooves />
         </g>
-        <BackMidline />
-
-        {/* view labels */}
-        <text
-          x="115"
-          y="642"
-          textAnchor="middle"
-          fill="#6b6b6b"
-          fontSize="10"
-          fontWeight="600"
-          letterSpacing="3"
-        >
-          FRONT
-        </text>
-        <text
-          x="325"
-          y="642"
-          textAnchor="middle"
-          fill="#6b6b6b"
-          fontSize="10"
-          fontWeight="600"
-          letterSpacing="3"
-        >
-          BACK
-        </text>
+        <BackDetail />
       </svg>
 
       <div className="mt-3 rounded-xl border border-border bg-card px-4 py-3">
@@ -239,21 +217,21 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
   );
 }
 
-/* ── shared symmetric core: torso, neck, head (centered at x = 115) ───── */
+/* ── shared symmetric core: V-taper torso, neck, head (centered x = 107) ─ */
 function BodyCore() {
   return (
     <>
-      {/* torso silhouette: delt caps, ribcage, waist, hips, groin */}
+      {/* torso: broad shoulders → narrow waist → hips → groin */}
       <path
-        d="M99,92 C82,96 66,100 56,110 C48,120 48,138 52,153 C60,177 74,190 76,214 C77,233 70,250 70,272 C72,291 90,303 115,305 C140,303 158,291 160,272 C160,250 153,233 154,214 C156,190 170,177 178,153 C182,138 182,120 174,110 C164,100 148,96 131,92 Z"
+        d="M91,104 C78,107 64,112 55,121 C47,129 44,140 46,154 C49,174 56,192 62,210 C65,224 66,240 65,254 C63,266 60,278 59,288 C60,296 74,301 107,301 C140,301 154,296 155,288 C154,278 151,266 149,254 C148,240 149,224 152,210 C158,192 165,174 168,154 C170,140 167,129 159,121 C150,112 136,107 123,104 Z"
         fill="url(#mm-body)"
       />
-      {/* neck sits behind the head */}
+      {/* neck behind the head */}
       <path
-        d="M100,58 L130,58 L134,94 C124,101 106,101 96,94 Z"
+        d="M90,66 L124,66 L128,106 C118,113 96,113 86,106 Z"
         fill="url(#mm-body)"
       />
-      <ellipse cx="115" cy="43" rx="26" ry="33" fill="url(#mm-head)" />
+      <ellipse cx="107" cy="47" rx="25" ry="28" fill="url(#mm-head)" />
     </>
   );
 }
@@ -262,84 +240,88 @@ function BodyCore() {
 function FrontSide({ mp }: { mp: MusclePath }) {
   return (
     <>
-      {/* limb bases */}
+      {/* limb bases — arms hang beside the body, legs apart */}
       <path
-        d="M78,280 C65,318 62,378 70,422 C75,446 86,458 98,456 C108,454 113,443 112,428 C109,392 108,338 111,300 C105,288 93,276 78,280 Z"
+        d="M52,112 C34,114 18,128 13,152 C8,178 11,214 15,240 C18,251 26,257 36,255 C47,253 53,246 53,234 L56,180 C57,150 58,128 52,112 Z"
         fill="url(#mm-body)"
       />
       <path
-        d="M80,458 C72,492 74,534 81,562 C85,580 92,590 99,588 C105,586 108,576 108,564 L105,468 Z"
+        d="M16,252 C12,266 13,282 17,293 C24,301 40,302 47,295 C52,289 53,278 52,266 L53,254 Z"
+        fill="url(#mm-body)"
+      />
+      {staticPath(
+        "M17,292 C10,300 9,314 14,324 C19,332 32,334 39,327 C45,320 45,306 40,297 C34,291 24,289 17,292 Z",
+      )}
+      <path
+        d="M58,292 C57,320 60,356 64,388 C67,408 74,418 86,417 C99,416 105,406 104,390 C102,360 101,326 101,296 C96,288 74,286 58,292 Z"
         fill="url(#mm-body)"
       />
       <path
-        d="M58,100 C45,106 40,126 42,152 L45,240 C47,254 55,264 64,262 C72,260 76,250 76,236 L76,148 C74,120 68,102 58,100 Z"
+        d="M65,414 C59,450 61,488 67,518 C70,536 73,548 76,553 L88,553 C87,538 87,522 89,506 C93,474 98,442 103,416 Z"
         fill="url(#mm-body)"
       />
-      <path
-        d="M47,266 C40,288 38,318 42,342 C45,358 53,368 61,366 C68,364 72,355 72,344 L74,274 C72,266 59,260 47,266 Z"
-        fill="url(#mm-body)"
-      />
-      {staticPath("M45,370 C38,382 40,398 51,402 C62,406 72,400 74,388 L74,370 Z")}
-      {staticPath("M78,590 C71,598 69,609 75,614 L108,614 C114,612 114,601 109,592 Z")}
+      {staticPath(
+        "M74,552 C64,562 56,578 54,592 C56,598 70,600 84,598 C92,596 94,588 92,576 C90,564 84,554 74,552 Z",
+      )}
 
       {/* leg muscles */}
       {mp(
         "quads",
-        "M80,292 C69,330 66,386 75,426 C80,448 90,458 100,455 C108,452 112,442 111,428 C108,392 107,338 110,304 C104,293 93,287 80,292 Z",
+        "M60,298 C58,330 61,366 66,392 C70,410 78,419 88,416 C97,413 102,404 101,389 C99,360 99,326 100,300 C95,292 74,291 60,298 Z",
       )}
       {mp(
         "quads",
-        "M98,406 C93,422 95,441 103,449 C109,453 112,446 112,437 L111,412 Z",
+        "M86,378 C82,392 84,408 91,414 C97,418 101,412 101,402 L100,382 Z",
       )}
       {staticPath(
-        "M110,306 C111,344 110,388 107,424 L102,426 C105,384 106,342 105,304 Z",
+        "M100,302 C102,330 101,360 98,384 L93,386 C95,358 96,330 95,300 Z",
       )}
       {staticPath(
-        "M84,470 C79,500 81,534 87,558 L96,556 C91,530 89,496 92,470 Z",
+        "M68,430 C64,462 65,498 70,524 L78,522 C74,496 73,464 76,432 Z",
       )}
 
-      {/* torso muscles — order: obliques → serratus → abs → chest (pec on top) */}
+      {/* torso muscles — obliques → serratus → abs → chest */}
       {mp(
         "neck",
-        "M102,72 C107,78 123,78 128,72 L131,93 C122,98 108,98 99,93 Z",
+        "M94,78 C99,86 115,86 120,78 L127,106 C117,112 97,112 87,106 Z",
       )}
       {mp(
         "obliques",
-        "M82,170 C76,196 76,230 84,254 C88,266 94,274 100,276 L100,178 Z",
+        "M66,196 C62,216 62,240 68,256 C72,266 79,271 85,271 L85,204 Z",
       )}
       {staticPath(
-        "M73,154 C79,151 86,153 91,158 L88,165 C83,162 77,161 72,162 Z",
+        "M60,164 C65,161 71,163 75,168 L72,175 C68,172 63,171 59,172 Z",
       )}
       {staticPath(
-        "M74,168 C80,165 87,167 92,172 L89,179 C84,176 78,175 73,176 Z",
+        "M61,178 C66,175 72,177 77,182 L74,189 C70,186 65,185 60,186 Z",
       )}
       {staticPath(
-        "M76,182 C82,179 88,181 93,186 L90,193 C85,190 80,189 75,190 Z",
+        "M63,192 C68,189 74,191 79,196 L76,203 C72,200 67,199 62,200 Z",
       )}
       {staticPath(
-        "M78,196 C84,193 90,195 95,200 L92,207 C87,204 82,203 77,204 Z",
+        "M65,206 C70,203 76,205 81,210 L78,217 C74,214 69,213 64,214 Z",
       )}
       {mp(
         "abs",
-        "M97,158 L115,157 L115,264 C108,274 100,277 96,270 C93,258 93,192 97,158 Z",
+        "M84,182 L107,180 L107,262 C100,270 90,272 85,265 C82,252 82,200 84,182 Z",
       )}
       {mp(
         "chest",
-        "M82,102 L115,98 L115,154 C102,170 85,166 79,151 C75,138 76,112 82,102 Z",
+        "M62,120 L107,114 L107,176 C94,186 74,180 66,166 C61,152 60,132 62,120 Z",
       )}
 
-      {/* arm muscles — arm hangs in front of torso + thigh */}
+      {/* arm muscles — delt over biceps, arm chain beside the torso */}
       {mp(
         "biceps",
-        "M52,160 C46,178 45,206 48,230 C50,247 56,257 64,255 C70,253 73,245 73,233 L73,180 C72,166 64,156 52,160 Z",
+        "M20,176 C15,196 14,222 17,240 C20,250 28,254 36,252 C44,250 49,243 49,232 L50,198 C49,182 40,172 20,176 Z",
       )}
       {mp(
         "forearms",
-        "M50,268 C44,290 43,316 46,338 C49,353 55,361 61,359 C66,357 69,349 69,339 L71,278 C69,270 60,264 50,268 Z",
+        "M18,256 C14,268 14,282 17,291 C21,298 30,300 38,297 C44,294 47,287 47,277 L49,260 C44,254 26,252 18,256 Z",
       )}
       {mp(
         "front_delts",
-        "M62,96 C49,103 42,122 43,145 C44,162 54,174 66,173 C75,172 81,164 81,151 L82,113 C79,100 72,94 62,96 Z",
+        "M52,110 C32,113 16,128 12,152 C9,172 17,186 32,187 C45,188 55,178 56,162 L57,132 C55,116 60,108 52,110 Z",
       )}
     </>
   );
@@ -350,89 +332,93 @@ function FrontGrooves() {
   return (
     <>
       {/* clavicle + neck */}
-      {grooveLine("M93,97 C100,92 109,92 114,96", 0.55, 1.2)}
-      {grooveLine("M111,91 C113,94 117,94 119,91", 0.6, 1.2)}
-      {grooveLine("M104,74 C106,81 109,88 113,94", 0.5)}
+      {grooveLine("M78,110 C87,105 97,105 105,110", 0.55, 1.2)}
+      {grooveLine("M103,104 C105,107 109,107 111,104", 0.6, 1.2)}
+      {grooveLine("M94,80 C96,90 100,100 104,107", 0.5)}
       {/* pectoral fibers */}
-      {grooveLine("M90,110 L114,104")}
-      {grooveLine("M84,122 L113,112")}
-      {grooveLine("M83,136 L113,127")}
-      {grooveLine("M86,150 L113,142")}
+      {grooveLine("M66,132 L105,124")}
+      {grooveLine("M64,146 L105,138")}
+      {grooveLine("M66,160 L105,152")}
+      {grooveLine("M70,172 L105,166")}
       {/* ab inscriptions */}
-      {grooveLine("M97,180 L115,180")}
-      {grooveLine("M96,204 L115,204")}
-      {grooveLine("M96,228 L115,228")}
-      {grooveLine("M97,252 C103,259 110,261 115,260")}
+      {grooveLine("M84,200 L107,200")}
+      {grooveLine("M83,218 L107,218")}
+      {grooveLine("M83,236 L107,236")}
+      {grooveLine("M84,254 C90,261 99,264 107,263")}
       {/* oblique fibers + inguinal line */}
-      {grooveLine("M80,186 C86,196 93,203 98,205")}
-      {grooveLine("M81,204 C87,214 94,221 99,223")}
-      {grooveLine("M83,232 C88,241 94,248 99,250")}
-      {grooveLine("M87,270 C94,277 104,282 112,285", 0.55, 1.2)}
+      {grooveLine("M67,206 C72,213 78,219 84,221")}
+      {grooveLine("M68,224 C73,232 79,238 84,240")}
+      {grooveLine("M69,242 C74,250 80,256 85,258")}
+      {grooveLine("M74,266 C81,272 92,276 103,278", 0.55, 1.2)}
       {/* deltoid heads */}
-      {grooveLine("M66,104 C60,126 58,148 63,168")}
-      {grooveLine("M75,112 C71,132 70,152 73,166")}
-      {grooveLine("M54,114 C49,134 49,154 54,168")}
+      {grooveLine("M26,132 C21,152 20,172 25,186")}
+      {grooveLine("M36,124 C31,146 30,170 34,184")}
+      {grooveLine("M46,120 C43,142 43,166 46,180")}
       {/* biceps heads + elbow crease */}
-      {grooveLine("M58,168 C54,196 54,226 58,248")}
-      {grooveLine("M66,170 C63,198 63,228 66,250")}
-      {grooveLine("M50,258 C56,263 64,264 71,260", 0.55)}
+      {grooveLine("M26,184 C22,206 22,230 26,246")}
+      {grooveLine("M36,182 C33,206 33,230 36,248")}
+      {grooveLine("M20,250 C27,255 38,256 46,252", 0.55)}
       {/* forearm compartments */}
-      {grooveLine("M47,272 C44,298 44,326 47,346")}
-      {grooveLine("M56,278 C52,304 52,332 56,352")}
-      {grooveLine("M63,284 C60,308 60,334 63,350")}
+      {grooveLine("M22,260 C19,272 19,284 22,293")}
+      {grooveLine("M30,258 C27,270 27,284 30,294")}
+      {grooveLine("M38,258 C41,270 41,284 39,293")}
       {/* fist knuckles */}
-      {grooveLine("M45,380 C50,377 57,377 62,380", 0.55)}
-      {grooveLine("M46,391 C51,388 58,388 63,391", 0.55)}
-      {/* quad separation + VMO + knee + shin */}
-      {grooveLine("M89,302 C84,346 84,398 90,436")}
-      {grooveLine("M101,308 C99,348 100,396 103,426")}
-      {grooveLine("M76,352 C86,358 96,361 106,360", 0.45)}
-      {grooveLine("M97,412 C101,428 106,440 111,444", 0.5)}
-      {grooveLine("M87,447 C93,442 101,444 105,450", 0.5)}
-      {grooveLine("M96,472 C92,502 93,532 98,556", 0.45)}
-      {grooveLine("M103,565 C106,569 107,573 107,577", 0.5)}
+      {grooveLine("M15,302 C20,299 27,299 32,302", 0.55)}
+      {grooveLine("M15,314 C20,311 27,311 32,314", 0.55)}
+      {/* quad separation, VMO, knee, shin */}
+      {grooveLine("M78,308 C73,344 73,384 79,410")}
+      {grooveLine("M66,314 C62,344 63,378 68,402")}
+      {grooveLine("M94,312 C92,344 93,378 96,404")}
+      {grooveLine("M64,358 C72,363 82,366 92,365", 0.45)}
+      {grooveLine("M88,384 C91,396 95,406 101,410", 0.5)}
+      {grooveLine("M74,412 C80,408 88,409 93,414", 0.5)}
+      {grooveLine("M76,436 C72,466 73,498 78,520", 0.45)}
+      {grooveLine("M84,548 C87,552 88,556 88,560", 0.5)}
       {/* toes */}
-      {grooveLine("M84,603 L84,613", 0.5)}
-      {grooveLine("M93,604 L93,613", 0.5)}
-      {grooveLine("M102,605 L102,613", 0.5)}
+      {grooveLine("M66,578 L64,594", 0.5)}
+      {grooveLine("M75,582 L74,596", 0.5)}
+      {grooveLine("M84,584 L84,596", 0.5)}
     </>
   );
 }
 
-/* ── FRONT: midline + face (drawn once, on top) ───────────────────────── */
-function FrontMidline() {
+/* ── FRONT: hair, face, midline + occlusion shadows (drawn once) ──────── */
+function FrontDetail() {
   return (
     <>
-      {/* short hair */}
+      {/* short cropped hair */}
       {staticPath(
-        "M90,41 C92,21 102,11 115,11 C128,11 138,21 140,41 C134,30 126,26 115,26 C104,26 96,31 90,41 Z",
+        "M83,42 C84,24 93,19 107,19 C121,19 130,24 131,42 C126,32 119,29 107,29 C95,29 88,32 83,42 Z",
         HAIR_FILL,
+        false,
       )}
-      {grooveLine("M99,24 C107,18 123,18 131,24", 0.35)}
       {/* ears */}
-      {grooveLine("M89,44 C85,47 85,53 89,56", 0.6, 1.2)}
-      {grooveLine("M141,44 C145,47 145,53 141,56", 0.6, 1.2)}
+      {grooveLine("M82,44 C79,47 79,53 82,56", 0.6, 1.2)}
+      {grooveLine("M132,44 C135,47 135,53 132,56", 0.6, 1.2)}
       {/* face */}
-      {grooveLine("M99,43 C103,40 108,40 112,42", 0.7, 1.2)}
-      {grooveLine("M131,43 C127,40 122,40 118,42", 0.7, 1.2)}
-      {staticPath(
-        "M100,49 C103,46 109,46 112,49 C109,52 103,52 100,49 Z",
-        "#232323",
-        false,
-      )}
-      {staticPath(
-        "M130,49 C127,46 121,46 118,49 C121,52 127,52 130,49 Z",
-        "#232323",
-        false,
-      )}
-      {grooveLine("M115,47 L115,57", 0.55, 1.2)}
-      {grooveLine("M110,59 C113,61 117,61 120,59", 0.6, 1.2)}
-      {grooveLine("M109,66 C112,68 118,68 121,66", 0.65, 1.2)}
+      {grooveLine("M91,42 C95,39 101,39 105,41", 0.7, 1.2)}
+      {grooveLine("M123,42 C119,39 113,39 109,41", 0.7, 1.2)}
+      <path
+        d="M92,48 C95,45 101,45 104,48 C101,51 95,51 92,48 Z"
+        fill="#232323"
+      />
+      <path
+        d="M122,48 C119,45 113,45 110,48 C113,51 119,51 122,48 Z"
+        fill="#232323"
+      />
+      {grooveLine("M107,47 L107,56", 0.55, 1.2)}
+      {grooveLine("M103,58 C105,60 109,60 111,58", 0.6, 1.2)}
+      {grooveLine("M102,65 C105,67 109,67 112,65", 0.65, 1.2)}
       {/* sternum, linea alba, navel, groin */}
-      {grooveLine("M115,100 L115,153", 0.55, 1.3)}
-      {grooveLine("M115,161 L115,255", 0.5, 1.2)}
-      <ellipse cx="115" cy="241" rx="2" ry="2.6" fill={GROOVE} opacity={0.7} />
-      {grooveLine("M115,277 L115,301", 0.45)}
+      {grooveLine("M107,118 L107,174", 0.5, 1.2)}
+      {grooveLine("M107,186 L107,256", 0.45, 1.1)}
+      <ellipse cx="107" cy="236" rx="2" ry="2.6" fill={GROOVE} opacity={0.7} />
+      {grooveLine("M107,272 L107,296", 0.4)}
+      {/* occlusion shadows */}
+      {shadow(107, 82, 20, 6, 0.4)}
+      {shadow(57, 160, 6, 9, 0.35)}
+      {shadow(157, 160, 6, 9, 0.35)}
+      {shadow(107, 294, 26, 8, 0.35)}
     </>
   );
 }
@@ -441,72 +427,72 @@ function FrontMidline() {
 function BackSide({ mp }: { mp: MusclePath }) {
   return (
     <>
-      {/* limb bases */}
+      {/* limb bases (front chain translated +222) */}
       <path
-        d="M288,280 C275,318 272,378 280,422 C285,446 296,458 308,456 C318,454 323,443 322,428 C319,392 318,338 321,300 C315,288 303,276 288,280 Z"
+        d="M274,112 C256,114 240,128 235,152 C230,178 233,214 237,240 C240,251 248,257 258,255 C269,253 275,246 275,234 L278,180 C279,150 280,128 274,112 Z"
         fill="url(#mm-body)"
       />
       <path
-        d="M290,458 C282,492 284,534 291,562 C295,580 302,590 309,588 C315,586 318,576 318,564 L315,468 Z"
-        fill="url(#mm-body)"
-      />
-      <path
-        d="M268,100 C255,106 250,126 252,152 L255,240 C257,254 265,264 274,262 C282,260 286,250 286,236 L286,148 C284,120 278,102 268,100 Z"
-        fill="url(#mm-body)"
-      />
-      <path
-        d="M257,266 C250,288 248,318 252,342 C255,358 263,368 271,366 C278,364 282,355 282,344 L284,274 C282,266 269,260 257,266 Z"
+        d="M238,252 C234,266 235,282 239,293 C246,301 262,302 269,295 C274,289 275,278 274,266 L275,254 Z"
         fill="url(#mm-body)"
       />
       {staticPath(
-        "M255,370 C248,382 250,398 261,402 C272,406 282,400 284,388 L284,370 Z",
+        "M239,292 C232,300 231,314 236,324 C241,332 254,334 261,327 C267,320 267,306 262,297 C256,291 246,289 239,292 Z",
       )}
+      <path
+        d="M280,292 C279,320 282,356 286,388 C289,408 296,418 308,417 C321,416 327,406 326,390 C324,360 323,326 323,296 C318,288 296,286 280,292 Z"
+        fill="url(#mm-body)"
+      />
+      <path
+        d="M287,414 C281,450 283,488 289,518 C292,536 295,548 298,553 L310,553 C309,538 309,522 311,506 C315,474 320,442 325,416 Z"
+        fill="url(#mm-body)"
+      />
       {staticPath(
-        "M288,590 C281,598 279,609 285,614 L318,614 C324,612 324,601 319,592 Z",
+        "M296,552 C286,562 278,578 276,592 C278,598 292,600 306,598 C314,596 316,588 314,576 C312,564 306,554 296,552 Z",
       )}
 
       {/* back muscles — lats → erectors → scapula → traps → glutes → hams → calves */}
       {mp(
         "lats",
-        "M286,170 C296,159 311,154 320,160 L320,252 C320,268 312,283 301,290 C295,293 288,293 286,287 Z",
+        "M279,156 C281,176 283,196 287,214 C290,232 290,250 288,264 L318,268 L318,150 C306,144 290,147 279,156 Z",
       )}
       {mp(
         "lower_back",
-        "M317,164 L325,164 L325,315 C319,312 313,303 309,290 Z",
+        "M321,166 L329,166 L329,296 C325,294 322,288 321,276 Z",
       )}
       {staticPath(
-        "M291,157 C301,152 313,158 317,170 C319,178 313,184 303,184 C293,184 287,174 288,163 Z",
+        "M283,152 C294,146 308,150 315,162 C318,172 313,184 302,186 C291,188 284,178 283,166 Z",
       )}
       {mp(
         "traps",
-        "M325,68 L294,85 C278,95 265,112 261,133 C274,147 292,155 304,159 L325,165 Z",
+        "M329,74 L277,110 C262,124 254,142 256,158 C264,178 292,194 329,197 Z",
       )}
       {mp(
         "glutes",
-        "M322,297 C308,291 291,295 281,309 C274,324 275,347 284,358 C294,368 312,369 321,357 L324,340 L324,310 Z",
+        "M327,290 C314,284 296,288 286,302 C278,316 279,338 289,348 C300,358 318,358 327,347 L329,330 L329,296 Z",
       )}
       {mp(
         "hamstrings",
-        "M284,362 C277,386 274,410 279,428 C283,444 292,456 302,453 C311,450 315,440 314,427 C311,406 313,384 316,363 C310,357 291,356 284,362 Z",
+        "M288,354 C286,372 286,392 290,406 C295,415 305,419 313,415 C319,412 322,404 321,393 C319,376 320,362 323,353 C315,348 295,348 288,354 Z",
       )}
       {mp(
         "calves",
-        "M291,468 C286,494 286,532 292,555 C297,571 305,577 311,571 C316,565 318,552 318,537 L318,474 Z",
+        "M290,428 C285,456 285,494 291,520 C296,540 304,548 311,542 C317,536 319,522 319,506 L319,432 Z",
       )}
-      {staticPath("M300,574 L316,574 L316,594 C310,597 304,596 300,592 Z")}
+      {staticPath("M302,548 L316,548 L316,568 C311,571 305,570 302,566 Z")}
 
-      {/* arm muscles — arm hangs in front of glutes + hamstrings */}
+      {/* arm muscles */}
       {mp(
         "triceps",
-        "M260,160 C252,178 250,208 254,234 C256,250 262,261 270,259 C276,257 279,249 279,237 L280,178 C278,164 271,154 260,160 Z",
+        "M242,176 C237,196 236,222 239,240 C242,250 250,254 258,252 C266,250 271,243 271,232 L272,198 C271,182 262,172 242,176 Z",
       )}
       {mp(
         "forearms",
-        "M260,268 C254,290 253,316 256,338 C259,353 265,361 271,359 C276,357 279,349 279,339 L281,278 C279,270 270,264 260,268 Z",
+        "M240,256 C236,268 236,282 239,291 C243,298 252,300 260,297 C266,294 269,287 269,277 L271,260 C266,254 248,252 240,256 Z",
       )}
       {mp(
         "rear_delts",
-        "M270,98 C257,105 250,124 251,147 C252,164 261,177 273,176 C282,175 287,166 287,153 L287,115 C285,103 280,96 270,98 Z",
+        "M274,110 C254,113 238,128 234,152 C231,172 239,186 254,187 C267,188 277,178 278,162 L279,132 C277,116 282,108 274,110 Z",
       )}
     </>
   );
@@ -517,71 +503,78 @@ function BackGrooves() {
   return (
     <>
       {/* trapezius fibers */}
-      {grooveLine("M318,96 C302,104 288,116 278,132")}
-      {grooveLine("M314,120 C302,130 292,142 286,154")}
-      {grooveLine("M316,144 C309,149 303,153 299,158", 0.45)}
+      {grooveLine("M323,92 C308,100 294,112 284,128")}
+      {grooveLine("M321,116 C306,126 294,140 288,156")}
+      {grooveLine("M322,146 C313,154 305,162 300,172", 0.45)}
       {/* rear deltoid heads */}
-      {grooveLine("M274,108 C266,128 264,150 269,172")}
-      {grooveLine("M283,116 C278,136 277,156 280,170")}
+      {grooveLine("M246,120 C240,142 239,164 244,182")}
+      {grooveLine("M256,116 C251,140 250,164 254,180")}
       {/* scapula: infraspinatus fibers + medial border */}
-      {grooveLine("M294,165 C302,162 310,165 315,171", 0.5)}
-      {grooveLine("M293,174 C301,171 309,174 314,179", 0.5)}
-      {grooveLine("M303,161 C300,172 301,179 304,184", 0.55)}
+      {grooveLine("M290,158 C298,155 307,158 313,165", 0.5)}
+      {grooveLine("M289,170 C297,167 306,170 312,177", 0.5)}
+      {grooveLine("M298,152 C295,166 296,178 300,186", 0.55)}
       {/* latissimus fan */}
-      {grooveLine("M316,172 C310,198 300,234 291,264")}
-      {grooveLine("M315,198 C311,224 305,252 298,278")}
+      {grooveLine("M316,164 C310,190 300,222 291,250")}
+      {grooveLine("M318,192 C313,216 305,240 297,262")}
       {/* triceps heads */}
-      {grooveLine("M266,170 C262,196 262,228 266,252")}
-      {grooveLine("M274,176 C271,202 271,230 274,252")}
+      {grooveLine("M248,184 C244,206 244,230 248,248")}
+      {grooveLine("M257,188 C254,210 254,232 257,250")}
       {/* forearm extensors + fist knuckles */}
-      {grooveLine("M258,280 C254,306 254,332 258,352")}
-      {grooveLine("M266,286 C263,310 263,334 266,352")}
-      {grooveLine("M255,380 C260,377 267,377 272,380", 0.55)}
-      {grooveLine("M256,391 C261,388 268,388 273,391", 0.55)}
+      {grooveLine("M244,262 C241,274 241,286 244,295")}
+      {grooveLine("M252,260 C249,272 249,286 252,295")}
+      {grooveLine("M237,302 C242,299 249,299 254,302", 0.55)}
+      {grooveLine("M237,314 C242,311 249,311 254,314", 0.55)}
       {/* glute fibers */}
-      {grooveLine("M282,314 C276,332 277,350 286,360", 0.5)}
-      {grooveLine("M306,306 C300,326 300,346 308,360", 0.5)}
+      {grooveLine("M292,306 C287,322 288,338 296,348", 0.5)}
+      {grooveLine("M314,300 C309,318 309,336 316,348", 0.5)}
       {/* hamstring heads */}
-      {grooveLine("M283,376 C279,398 279,418 284,434", 0.45)}
-      {grooveLine("M290,370 C285,396 285,420 291,442", 0.45)}
-      {grooveLine("M303,372 C300,398 300,422 305,442", 0.45)}
+      {grooveLine("M292,362 C288,378 288,396 292,410", 0.45)}
+      {grooveLine("M300,360 C297,378 297,398 301,412", 0.45)}
+      {grooveLine("M310,360 C313,378 313,396 311,410", 0.45)}
       {/* knee crease, calf heads, ankle, heel */}
-      {grooveLine("M288,452 C294,457 304,457 310,452", 0.5, 1.2)}
-      {grooveLine("M293,484 C289,508 289,534 294,555", 0.45)}
-      {grooveLine("M301,478 C300,504 300,532 301,554", 0.45)}
-      {grooveLine("M308,484 C306,508 306,536 309,556", 0.45)}
-      {grooveLine("M288,568 C286,573 287,579 290,583", 0.5)}
-      {grooveLine("M292,596 C297,606 312,606 317,596", 0.5)}
+      {grooveLine("M290,414 C296,418 306,418 312,414", 0.5, 1.2)}
+      {grooveLine("M294,442 C290,470 290,498 295,520", 0.45)}
+      {grooveLine("M303,436 C302,466 302,496 304,522", 0.45)}
+      {grooveLine("M312,442 C315,468 315,496 312,518", 0.45)}
+      {grooveLine("M288,546 C286,552 287,558 290,562", 0.5)}
+      {grooveLine("M293,572 C298,582 312,582 317,572", 0.5)}
     </>
   );
 }
 
-/* ── BACK: hair, spine and midline detail (drawn once, on top) ────────── */
-function BackMidline() {
+/* ── BACK: hair, spine and occlusion shadows (drawn once) ─────────────── */
+function BackDetail() {
   return (
     <>
       {/* full head of hair */}
       {staticPath(
-        "M301,52 C298,30 306,11 325,11 C344,11 352,30 349,52 C346,64 337,71 325,71 C313,71 304,64 301,52 Z",
+        "M305,52 C302,30 311,19 329,19 C347,19 356,30 353,52 C350,64 341,71 329,71 C317,71 308,64 305,52 Z",
         HAIR_FILL,
+        false,
       )}
-      {grooveLine("M308,27 C314,19 336,19 342,27", 0.3)}
-      {grooveLine("M303,44 C311,34 339,34 347,44", 0.3)}
+      {grooveLine("M312,30 C318,23 340,23 346,30", 0.3)}
+      {grooveLine("M308,46 C315,37 343,37 350,46", 0.3)}
       {/* ears + nape */}
-      {grooveLine("M299,44 C295,47 295,53 299,56", 0.6, 1.2)}
-      {grooveLine("M351,44 C355,47 355,53 351,56", 0.6, 1.2)}
-      {grooveLine("M312,75 C317,80 333,80 338,75", 0.5)}
+      {grooveLine("M305,46 C302,49 302,55 305,58", 0.6, 1.2)}
+      {grooveLine("M353,46 C356,49 356,55 353,58", 0.6, 1.2)}
+      {grooveLine("M316,76 C321,81 337,81 342,76", 0.5)}
       {/* spinal groove */}
-      {grooveLine("M325,74 L325,162", 0.5, 1.3)}
-      {grooveLine("M325,176 L325,304", 0.5, 1.3)}
-      {/* erector spinais cross-hatching */}
-      {grooveLine("M317,200 L333,200", 0.45)}
-      {grooveLine("M316,228 L334,228", 0.45)}
-      {grooveLine("M315,256 L335,256", 0.45)}
-      {grooveLine("M314,284 L336,284", 0.4)}
+      {grooveLine("M329,80 L329,196", 0.5, 1.3)}
+      {grooveLine("M329,204 L329,292", 0.5, 1.3)}
+      {/* erector spinais ticks */}
+      {grooveLine("M321,212 L337,212", 0.45)}
+      {grooveLine("M320,234 L338,234", 0.45)}
+      {grooveLine("M320,256 L338,256", 0.45)}
+      {grooveLine("M321,278 L337,278", 0.4)}
       {/* dimples of venus */}
-      <ellipse cx="316" cy="297" rx="1.8" ry="2.2" fill={GROOVE} opacity={0.6} />
-      <ellipse cx="334" cy="297" rx="1.8" ry="2.2" fill={GROOVE} opacity={0.6} />
+      <ellipse cx="321" cy="288" rx="1.8" ry="2.2" fill={GROOVE} opacity={0.6} />
+      <ellipse cx="337" cy="288" rx="1.8" ry="2.2" fill={GROOVE} opacity={0.6} />
+      {/* occlusion shadows */}
+      {shadow(329, 84, 20, 6, 0.38)}
+      {shadow(279, 160, 6, 9, 0.35)}
+      {shadow(379, 160, 6, 9, 0.35)}
+      {shadow(329, 352, 30, 7, 0.4)}
+      {shadow(329, 386, 7, 28, 0.25)}
     </>
   );
 }
