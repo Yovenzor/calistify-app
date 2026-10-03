@@ -10,7 +10,7 @@ import {
   type ChartRange,
 } from "@/lib/stats";
 import { cn } from "@/lib/utils";
-import { CalendarDays, LineChart, Timer, Trophy, User } from "lucide-react";
+import { CalendarDays, LineChart, Timer, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const METRICS: { id: ChartMetric; label: string; unit: string }[] = [
@@ -205,39 +205,36 @@ export default function Progress() {
           Muscle Activity
         </SectionLabel>
         <div className="rounded-2xl border border-border bg-card p-4">
+          <MuscleMap activation={athlete.trainedMuscles} />
           {athlete.muscleScoreTotal > 0 ? (
-            <>
-              <MuscleMap activation={athlete.trainedMuscles} />
-              <div className="mt-4 space-y-2.5 border-t border-border/70 pt-3">
-                {athlete.trainedMuscles
-                  .filter((m) => m.score > 0)
-                  .slice(0, 6)
-                  .map((m) => (
-                    <div key={m.id} className="flex items-center gap-3">
-                      <span className="w-24 shrink-0 truncate text-[11px] text-muted-foreground">
-                        {m.id
-                          .replace("_", " ")
-                          .replace(/\b\w/g, (c) => c.toUpperCase())}
-                      </span>
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all duration-700"
-                          style={{ width: `${Math.round(m.ratio * 100)}%` }}
-                        />
-                      </div>
-                      <span className="num w-8 text-right text-[11px] font-semibold text-primary">
-                        {Math.round(m.ratio * 100)}%
-                      </span>
+            <div className="mt-4 space-y-2.5 border-t border-border/70 pt-3">
+              {athlete.trainedMuscles
+                .filter((m) => m.score > 0)
+                .slice(0, 6)
+                .map((m) => (
+                  <div key={m.id} className="flex items-center gap-3">
+                    <span className="w-24 shrink-0 truncate text-[11px] text-muted-foreground">
+                      {m.id
+                        .replace("_", " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-700"
+                        style={{ width: `${Math.round(m.ratio * 100)}%` }}
+                      />
                     </div>
-                  ))}
-              </div>
-            </>
+                    <span className="num w-8 text-right text-[11px] font-semibold text-primary">
+                      {Math.round(m.ratio * 100)}%
+                    </span>
+                  </div>
+                ))}
+            </div>
           ) : (
-            <EmptyState
-              icon={User}
-              title="No muscles trained yet"
-              description="Complete a workout and only the muscles you actually hit will activate here."
-            />
+            <p className="border-t border-border/70 pt-3 text-center text-[11px] leading-5 text-muted-foreground">
+              No muscles trained yet — complete a workout and only the muscles
+              you actually hit will light up here.
+            </p>
           )}
         </div>
       </section>
