@@ -110,27 +110,26 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col border-x border-border/70 bg-background">
 
-      
       {/* Auth Content */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex items-center justify-center h-full flex-col">
-        <Card className="min-w-[350px] pb-0 border shadow-md">
+      <div className="flex-1 flex items-center justify-center px-4">
+        <div className="flex items-center justify-center h-full flex-col w-full">
+        <Card className="w-full max-w-[380px] min-w-0 pb-0 border shadow-md">
           {step === "signIn" ? (
             <>
               <CardHeader className="text-center">
               <div className="flex justify-center">
                     <img
                       src={logo}
-                      alt="Lock Icon"
-                      width={64}
-                      height={64}
+                      alt="Calistify"
+                      width={56}
+                      height={56}
                       className="rounded-lg mb-4 mt-4 cursor-pointer"
                       onClick={() => navigate("/")}
                     />
                   </div>
-                <CardTitle className="text-xl">Get Started</CardTitle>
+                <CardTitle className="text-xl">Welcome to Calistify</CardTitle>
                 <CardDescription>
                   Enter your email to log in or sign up
                 </CardDescription>

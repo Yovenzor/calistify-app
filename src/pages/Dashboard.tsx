@@ -1,5 +1,5 @@
-import { api } from "@/convex/_generated/api";
 import { EmptyState, SectionLabel, StatCard } from "@/components/AppUI";
+import { api } from "@/convex/_generated/api";
 import { ProgressChart } from "@/components/ProgressChart";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { useQuery } from "convex/react";
 
 const METRICS: { id: ChartMetric; label: string; unit: string }[] = [
   { id: "volume", label: "Volume", unit: "kg" },
@@ -42,12 +43,14 @@ const RANGES: ChartRange[] = ["7D", "30D", "3M", "1Y", "All"];
 export default function Dashboard() {
   const athlete = useAthlete();
   const navigate = useNavigate();
+  const templates = useQuery(api.workouts.listTemplates);
   const [metric, setMetric] = useState<ChartMetric>("volume");
   const [range, setRange] = useState<ChartRange>("30D");
 
   const name = athlete.profile?.name ?? "Athlete";
   const hour = new Date().getHours();
   const goal = athlete.profile?.weeklyGoal ?? 4;
+  const unit = athlete.profile?.weightUnit ?? "kg";
 
   const series = useMemo(
     () => buildChartSeries(athlete.workouts, athlete.weights, metric, range),
@@ -58,12 +61,40 @@ export default function Dashboard() {
   const topRecords = athlete.records.slice(0, 4);
   const lastWorkout = athlete.workouts[0];
 
-  const chartUnit = METRICS.find((m) => m.id === metric)?.unit ?? "kg";
+  /* "today's workout": a saved template first, else the last session */
+  const plannedWorkout = templates?.length
+    ? {
+        name: templates[0].name,
+        exerciseCount: templates[0].exerciseIds.length,
+        setCount: 0,
+        kind: "template" as const,
+      }
+    : lastWorkout
+      ? {
+          name: lastWorkout.name,
+          exerciseCount: lastWorkout.exerciseCount,
+          setCount: lastWorkout.sets,
+          kind: "history" as const,
+        }
+      : null;
+
+  const chartUnit =
+    metric === "weight" || metric === "volume"
+      ? unit
+      : (METRICS.find((m) => m.id === metric)?.unit ?? "kg");
 
   const chartPoints = useMemo(() => {
-    if (metric !== "duration") return series;
-    return series.map((p) => ({ ...p, value: Math.round(p.value / 60) }));
-  }, [series, metric]);
+    const conv = (v: number) =>
+      unit === "lb" && (metric === "weight" || metric === "volume")
+        ? v * 2.20462
+        : v;
+    const scaled = series.map((p) => ({ ...p, value: conv(p.value) }));
+    if (metric === "duration")
+      return scaled.map((p) => ({ ...p, value: Math.round(p.value / 60) }));
+    if (metric === "weight" || metric === "volume")
+      return scaled.map((p) => ({ ...p, value: Math.round(p.value) }));
+    return scaled;
+  }, [series, metric, unit]);
 
   return (
     <div className="space-y-8">
@@ -88,13 +119,24 @@ export default function Dashboard() {
           </div>
 
           <div className="px-5 py-4">
-            {lastWorkout ? (
+            {plannedWorkout ? (
               <>
-                <p className="text-[22px] font-bold tracking-tight">
-                  {lastWorkout.name}
-                </p>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="truncate text-[22px] font-bold tracking-tight">
+                    {plannedWorkout.name}
+                  </p>
+                  <span className="shrink-0 text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
+                    {plannedWorkout.kind === "template" ? "Template" : "Last session"}
+                  </span>
+                </div>
                 <p className="mt-1 text-[13px] text-muted-foreground">
-                  Repeat your last session or start fresh
+                  {plannedWorkout.exerciseCount > 0
+                    ? `${plannedWorkout.exerciseCount} ${plannedWorkout.exerciseCount === 1 ? "exercise" : "exercises"}${
+                        plannedWorkout.setCount > 0
+                          ? ` · ${plannedWorkout.setCount} sets`
+                          : ""
+                      } · ready when you are`
+                    : "Ready when you are"}
                 </p>
                 <div className="mt-4 flex gap-3">
                   <Button
@@ -104,14 +146,18 @@ export default function Dashboard() {
                     <Play className="size-4 fill-current" />
                     Start Workout
                   </Button>
-                  <Button
-                    variant="secondary"
-                    className="h-11 rounded-xl border border-border"
-                    onClick={() => navigate(`/app/workouts/${lastWorkout._id}`)}
-                  >
-                    <Repeat className="size-4" />
-                    View
-                  </Button>
+                  {plannedWorkout.kind === "history" && (
+                    <Button
+                      variant="secondary"
+                      className="h-11 rounded-xl border border-border"
+                      onClick={() =>
+                        navigate(`/app/workouts/${lastWorkout._id}`)
+                      }
+                    >
+                      <Repeat className="size-4" />
+                      View
+                    </Button>
+                  )}
                 </div>
               </>
             ) : (
@@ -163,7 +209,7 @@ export default function Dashboard() {
           />
           <StatCard
             label="Total Volume"
-            value={formatVolume(athlete.totals.totalVolume, "kg")}
+            value={formatVolume(athlete.totals.totalVolume, unit)}
             icon={Zap}
           />
           <StatCard
@@ -187,7 +233,7 @@ export default function Dashboard() {
         </SectionLabel>
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="grid grid-cols-7 gap-2">
-            {athlete.week.map((day, i) => {
+            {athlete.week.map((day) => {
               const active = day.workouts.length > 0;
               return (
                 <Link
@@ -313,7 +359,7 @@ export default function Dashboard() {
                   {r.exerciseName}
                 </p>
                 <p className="num mt-1 text-[22px] leading-none font-bold tracking-tight text-primary">
-                  {formatRecordValue(r.metric, r.value)}
+                  {formatRecordValue(r.metric, r.value, unit)}
                 </p>
                 <p className="mt-1.5 text-[10px] tracking-[0.08em] text-muted-foreground/80 uppercase">
                   Personal Best
@@ -357,7 +403,7 @@ export default function Dashboard() {
         {recent.length > 0 ? (
           <div className="space-y-3">
             {recent.map((w) => (
-              <WorkoutCard key={w._id} workout={w} />
+              <WorkoutCard key={w._id} workout={w} unit={unit} />
             ))}
           </div>
         ) : (
@@ -378,12 +424,77 @@ export default function Dashboard() {
           />
         )}
       </section>
+
+      {/* Muscle activity */}
+      <section>
+        <SectionLabel
+          action={
+            <Link
+              to="/app/progress"
+              className="text-[11px] font-medium text-primary hover:underline"
+            >
+              Muscle map
+            </Link>
+          }
+        >
+          Muscle Activity
+        </SectionLabel>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          {athlete.muscleScoreTotal > 0 ? (
+            <div className="space-y-2.5">
+              {athlete.trainedMuscles
+                .filter((m) => m.score > 0)
+                .slice(0, 5)
+                .map((m) => (
+                  <div key={m.id} className="flex items-center gap-3">
+                    <span className="w-24 shrink-0 truncate text-[11px] text-muted-foreground">
+                      {m.id
+                        .replace("_", " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-700"
+                        style={{ width: `${Math.round(m.ratio * 100)}%` }}
+                      />
+                    </div>
+                    <span className="num w-8 text-right text-[11px] font-semibold text-primary">
+                      {Math.round(m.ratio * 100)}%
+                    </span>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary">
+                <Activity className="size-4 text-muted-foreground" />
+              </span>
+              <div>
+                <p className="text-[13px] font-semibold">
+                  No muscles trained yet
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Your activation map fills in as you log workouts.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
 
-function formatRecordValue(metric: string, value: number): string {
-  if (metric === "weight") return `+${Math.round(value)} kg`;
+function formatRecordValue(
+  metric: string,
+  value: number,
+  unit: "kg" | "lb",
+): string {
+  if (metric === "weight") {
+    return unit === "lb"
+      ? `+${Math.round(value * 2.20462)} lb`
+      : `+${Math.round(value)} kg`;
+  }
   if (metric === "duration") return `${Math.round(value)}s`;
   return `${Math.round(value)} reps`;
 }

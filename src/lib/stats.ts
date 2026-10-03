@@ -1,4 +1,3 @@
-import type { MuscleGroup } from "./muscles";
 import { getExercise } from "./exercises";
 import { dateKey, startOfDay, weekStart } from "./format";
 
@@ -129,7 +128,7 @@ export function currentStreak(workouts: WorkoutSummaryDoc[]): number {
   const days = new Set(workouts.map((w) => dateKey(w.date)));
   if (days.size === 0) return 0;
   const today = startOfDay(new Date());
-  let cursor = new Date(today);
+  const cursor = new Date(today);
   if (!days.has(dateKey(cursor))) {
     cursor.setDate(cursor.getDate() - 1);
     if (!days.has(dateKey(cursor))) return 0;

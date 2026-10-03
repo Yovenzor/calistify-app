@@ -16,7 +16,13 @@ export interface WorkoutCardData {
  * Compact workout summary card used on the dashboard, history and calendar.
  * All values come from a real saved workout.
  */
-export function WorkoutCard({ workout }: { workout: WorkoutCardData }) {
+export function WorkoutCard({
+  workout,
+  unit = "kg",
+}: {
+  workout: WorkoutCardData;
+  unit?: "kg" | "lb";
+}) {
   return (
     <Link
       to={`/app/workouts/${workout._id}`}
@@ -51,7 +57,7 @@ export function WorkoutCard({ workout }: { workout: WorkoutCardData }) {
             Volume
           </p>
           <p className="num mt-0.5 text-[15px] font-semibold">
-            {formatVolume(workout.volume, "kg")}
+            {formatVolume(workout.volume, unit)}
           </p>
         </div>
         <div>

@@ -8,7 +8,8 @@ import { useNavigate } from "react-router";
 
 /** All personal records, grouped by metric. Empty for new users. */
 export default function Records() {
-  const { records } = useAthlete();
+  const { records, profile } = useAthlete();
+  const unit = profile?.weightUnit ?? "kg";
   const navigate = useNavigate();
 
   const groups = useMemo(() => {
@@ -71,7 +72,9 @@ export default function Records() {
                     </p>
                     <p className="num mt-1 text-[24px] leading-none font-bold tracking-tight text-primary">
                       {metric === "weight"
-                        ? `+${Math.round(r.value)} kg`
+                        ? unit === "lb"
+                          ? `+${Math.round(r.value * 2.20462)} lb`
+                          : `+${Math.round(r.value)} kg`
                         : metric === "duration"
                           ? `${Math.round(r.value)}s`
                           : `${Math.round(r.value)} reps`}

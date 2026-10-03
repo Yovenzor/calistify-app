@@ -28,20 +28,30 @@ export default function Progress() {
   const [metric, setMetric] = useState<ChartMetric>("volume");
   const [range, setRange] = useState<ChartRange>("30D");
 
+  const profileUnit = athlete.profile?.weightUnit ?? "kg";
+
   const series = useMemo(
     () => buildChartSeries(athlete.workouts, athlete.weights, metric, range),
     [athlete.workouts, athlete.weights, metric, range],
   );
 
-  const points = useMemo(
-    () =>
-      metric === "duration"
-        ? series.map((p) => ({ ...p, value: Math.round(p.value / 60) }))
-        : series,
-    [series, metric],
-  );
+  const points = useMemo(() => {
+    const conv = (v: number) =>
+      profileUnit === "lb" && (metric === "weight" || metric === "volume")
+        ? v * 2.20462
+        : v;
+    const scaled = series.map((p) => ({ ...p, value: conv(p.value) }));
+    if (metric === "duration")
+      return scaled.map((p) => ({ ...p, value: Math.round(p.value / 60) }));
+    if (metric === "weight" || metric === "volume")
+      return scaled.map((p) => ({ ...p, value: Math.round(p.value) }));
+    return scaled;
+  }, [series, metric, profileUnit]);
 
-  const unit = METRICS.find((m) => m.id === metric)?.unit ?? "kg";
+  const unit =
+    metric === "weight" || metric === "volume"
+      ? profileUnit
+      : (METRICS.find((m) => m.id === metric)?.unit ?? "kg");
 
   /* real monthly progress: workouts completed this calendar month vs goal */
   const now = new Date();
@@ -81,7 +91,7 @@ export default function Progress() {
             Volume
           </p>
           <p className="num mt-1.5 truncate text-[19px] font-bold">
-            {formatVolume(athlete.totals.totalVolume, "kg")}
+            {formatVolume(athlete.totals.totalVolume, profileUnit)}
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-3.5">

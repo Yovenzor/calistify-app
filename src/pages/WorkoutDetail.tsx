@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { EmptyState, SectionLabel } from "@/components/AppUI";
 import { Button } from "@/components/ui/button";
+import { useAthlete } from "@/hooks/use-athlete";
 import { MUSCLE_LABELS, type MuscleGroup } from "@/lib/muscles";
 import { getExercise } from "@/lib/exercises";
 import {
@@ -31,6 +32,8 @@ export default function WorkoutDetail() {
     api.workouts.get,
     id ? { id: id as never } : "skip",
   );
+  const { profile } = useAthlete();
+  const unit = profile?.weightUnit ?? "kg";
 
   if (data === undefined) {
     return (
@@ -112,7 +115,7 @@ export default function WorkoutDetail() {
           <Meta
             icon={ArrowLeftRight}
             label="Volume"
-            value={formatVolume(workout.volume, "kg")}
+            value={formatVolume(workout.volume, unit)}
           />
           <Meta
             icon={Trophy}
@@ -136,7 +139,9 @@ export default function WorkoutDetail() {
                 <span className="text-[13px] font-medium">{pr.exerciseName}</span>
                 <span className="num text-[15px] font-bold text-primary">
                   {pr.metric === "weight"
-                    ? `+${Math.round(pr.value)} kg`
+                    ? unit === "lb"
+                      ? `+${Math.round(pr.value * 2.20462)} lb`
+                      : `+${Math.round(pr.value)} kg`
                     : pr.metric === "duration"
                       ? `${Math.round(pr.value)}s`
                       : `${Math.round(pr.value)} reps`}
@@ -191,7 +196,7 @@ export default function WorkoutDetail() {
                   </div>
                   <div className="text-right">
                     <p className="num text-[13px] font-bold text-primary">
-                      {formatVolume(ex.volume, "kg")}
+                      {formatVolume(ex.volume, unit)}
                     </p>
                     <p className="num text-[10px] text-muted-foreground">
                       {ex.reps} reps
@@ -219,9 +224,9 @@ export default function WorkoutDetail() {
                         <span className="num">
                           {s.isBodyweight && s.weightKg === 0
                             ? "Bodyweight"
-                            : s.isBodyweight
-                              ? `BW + ${Math.round(s.weightKg)} kg`
-                              : `${Math.round(s.weightKg)} kg`}
+                            : unit === "lb"
+                              ? `${s.isBodyweight ? "BW + " : ""}${Math.round(s.weightKg * 2.20462)} lb`
+                              : `${s.isBodyweight ? "BW + " : ""}${Math.round(s.weightKg)} kg`}
                         </span>
                         <span className="num">
                           {def?.timed

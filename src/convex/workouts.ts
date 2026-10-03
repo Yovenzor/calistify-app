@@ -9,9 +9,9 @@ import {
   longestStreak,
   setCounts,
   setVolume,
-  type ExerciseInput,
 } from "../lib/stats";
 import { SKILLS } from "../lib/skills";
+import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
@@ -37,7 +37,7 @@ async function requireUser(ctx: QueryCtx | MutationCtx) {
 }
 
 type WorkoutDoc = {
-  _id: any;
+  _id: Id<"workouts">;
   date: number;
   day: string;
   durationSec: number;
@@ -62,7 +62,7 @@ function toSummary(w: WorkoutDoc) {
   };
 }
 
-async function profileOf(ctx: QueryCtx | MutationCtx, userId: any) {
+async function profileOf(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
   return await ctx.db
     .query("profiles")
     .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -72,7 +72,7 @@ async function profileOf(ctx: QueryCtx | MutationCtx, userId: any) {
 /** Bodyweight in effect on a given day (latest logged weight ≤ day). */
 async function bodyweightOn(
   ctx: QueryCtx | MutationCtx,
-  userId: any,
+  userId: Id<"users">,
   day: string,
 ): Promise<number> {
   const entry = await ctx.db
@@ -396,7 +396,7 @@ export const finish = mutation({
 
 async function deleteAll(
   ctx: MutationCtx,
-  userId: any,
+  userId: Id<"users">,
   what: "history" | "all",
 ) {
   const workouts = await ctx.db

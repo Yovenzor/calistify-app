@@ -1,9 +1,10 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
-async function requireProfile(ctx: QueryCtx | MutationCtx, userId: any) {
+async function requireProfile(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
   return await ctx.db
     .query("profiles")
     .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -58,7 +59,7 @@ export const completeOnboarding = mutation({
 
 async function appendWeightHistory(
   ctx: MutationCtx,
-  userId: any,
+  userId: Id<"users">,
   weightKg: number,
   day: string,
 ) {

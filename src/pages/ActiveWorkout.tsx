@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 /**
@@ -31,9 +31,9 @@ import { useNavigate } from "react-router";
 export default function ActiveWorkout() {
   const navigate = useNavigate();
   const session = useSession();
-  const { profile, weights } = useAthlete();
+  const { profile } = useAthlete();
   const finishMutation = useMutation(api.workouts.finish);
-  const [now, setNow] = useState(Date.now());
+  const now = session.now;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [finishing, setFinishing] = useState(false);
@@ -51,15 +51,10 @@ export default function ActiveWorkout() {
     newAchievements: { id: string; name: string; description: string }[];
     durationSec: number;
     name: string;
+    unit: "kg" | "lb";
   }>(null);
 
   const workout = session.workout;
-
-  /* wall clock for the elapsed timer */
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   /* completion screen renders even after the session is cleared */
   if (done) {
@@ -93,6 +88,7 @@ export default function ActiveWorkout() {
   })();
 
   const bodyweight = profile?.bodyweightKg ?? 0;
+  const unit = profile?.weightUnit ?? "kg";
   const stats = computeWorkoutStats(
     workout.exercises.map((e) => ({
       exerciseId: e.exerciseId,
@@ -142,6 +138,7 @@ export default function ActiveWorkout() {
         newAchievements: result.newAchievements ?? [],
         durationSec: Math.round(elapsedMs / 1000),
         name: workout.name,
+        unit,
       });
       session.clearWorkout();
     } catch (err) {
@@ -202,7 +199,7 @@ export default function ActiveWorkout() {
           ["Ex", String(stats.exerciseCount)],
           ["Sets", String(stats.setCount)],
           ["Reps", String(stats.repCount)],
-          ["Vol", formatVolume(stats.volume, "kg")],
+          ["Vol", formatVolume(stats.volume, unit)],
         ].map(([label, value]) => (
           <div key={label} className="text-center">
             <p className="text-[9px] tracking-[0.1em] text-muted-foreground uppercase">
@@ -336,11 +333,12 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
       </div>
 
       {/* header row */}
-      <div className="grid grid-cols-[28px_1fr_1fr_36px] gap-2 border-b border-border/70 px-4 py-2 text-[9px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+      <div className="grid grid-cols-[22px_1fr_1fr_40px_44px] gap-1.5 border-b border-border/70 px-4 py-2 text-[9px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
         <span>Set</span>
-        <span>{isTimed ? "Weight" : "Weight"}</span>
-        <span>{isTimed ? "Seconds" : "Reps"}</span>
+        <span>Weight</span>
+        <span>{isTimed ? "Secs" : "Reps"}</span>
         <span className="text-center">✓</span>
+        <span className="text-center">RPE</span>
       </div>
 
       <div className="divide-y divide-border/60">
@@ -348,7 +346,7 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
           <div
             key={set.id}
             className={cn(
-              "grid grid-cols-[28px_1fr_1fr_36px] items-center gap-2 px-4 py-2.5 transition-colors",
+              "grid grid-cols-[22px_1fr_1fr_40px_44px] items-center gap-1.5 px-4 py-2.5 transition-colors",
               set.completed && "bg-primary/[0.06]",
             )}
           >
@@ -366,8 +364,8 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
               onChange={(v) =>
                 session.updateSet(ex.instanceId, set.id, { weightKg: v })
               }
-              disabled={!set.isBodyweight}
-              suffix={set.isBodyweight ? "BW" : "kg"}
+              suffix={set.isBodyweight ? "+kg" : "kg"}
+              resetKey={`${set.id}-${set.isBodyweight ? "bw" : "w"}`}
             />
 
             <SetInput
@@ -395,6 +393,24 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
             >
               <Check className="size-3.5" strokeWidth={3} />
             </button>
+
+            <input
+              inputMode="decimal"
+              key={`${set.id}-rpe`}
+              defaultValue={set.rpe ? String(set.rpe) : ""}
+              placeholder="—"
+              aria-label={`RPE for set ${i + 1}`}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^0-9.]/g, "");
+                const parsed = parseFloat(raw);
+                session.updateSet(
+                  ex.instanceId,
+                  set.id,
+                  Number.isFinite(parsed) ? { rpe: parsed } : { rpe: undefined },
+                );
+              }}
+              className="num h-8 w-full rounded-lg border border-border bg-[#0c0c0c] px-1 text-center text-[11px] font-medium outline-none transition-colors focus:border-primary/50"
+            />
           </div>
         ))}
       </div>
@@ -464,27 +480,24 @@ function SetInput({
   onChange,
   suffix,
   disabled,
+  resetKey,
 }: {
   value: number;
   onChange: (v: number) => void;
   suffix: string;
   disabled?: boolean;
+  /** changing this remounts the field (e.g. when bodyweight toggles) */
+  resetKey?: string;
 }) {
-  const [text, setText] = useState(String(value || ""));
-
-  useEffect(() => {
-    setText(String(value || ""));
-  }, [value]);
-
   return (
     <div className="relative">
       <input
+        key={resetKey}
         inputMode="decimal"
-        value={text}
+        defaultValue={value ? String(value) : ""}
         disabled={disabled}
         onChange={(e) => {
           const raw = e.target.value.replace(/[^0-9.]/g, "");
-          setText(raw);
           const parsed = parseFloat(raw);
           onChange(Number.isFinite(parsed) ? parsed : 0);
         }}
@@ -504,16 +517,10 @@ function SetInput({
 /* ── Rest timer bar ────────────────────────────────────────────────────── */
 
 export function RestTimerBar() {
-  const { restEndsAt, adjustRest, skipRest, restDurationSec } = useSession();
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (restEndsAt === null) return;
-    const id = setInterval(() => setTick((t) => t + 1), 250);
-    return () => clearInterval(id);
-  }, [restEndsAt]);
+  const { restEndsAt, adjustRest, skipRest, restDurationSec, now } = useSession();
 
   if (restEndsAt === null) return null;
-  const remaining = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
+  const remaining = Math.max(0, Math.ceil((restEndsAt - now) / 1000));
   const progress = Math.min(1, remaining / Math.max(1, restDurationSec));
 
   return (
@@ -673,6 +680,7 @@ function FinishScreen({
     newAchievements: { id: string; name: string; description: string }[];
     durationSec: number;
     name: string;
+    unit: "kg" | "lb";
   };
   onDone: () => void;
   onView: () => void;
@@ -721,7 +729,7 @@ function FinishScreen({
           ["Exercises", String(data.stats.exerciseCount)],
           ["Sets", String(data.stats.setCount)],
           ["Reps", String(data.stats.repCount)],
-          ["Volume", formatVolume(data.stats.volume, "kg")],
+          ["Volume", formatVolume(data.stats.volume, data.unit)],
         ].map(([label, value]) => (
           <div
             key={label}
@@ -754,9 +762,9 @@ function FinishScreen({
                   {pr.exerciseName} · {pr.metric}
                 </span>
                 <span className="num font-semibold text-primary">
-                  {formatPRValue(pr.metric, pr.value)}
+                  {formatPRValue(pr.metric, pr.value, data.unit)}
                   <span className="ml-1.5 text-[10px] text-muted-foreground line-through">
-                    {formatPRValue(pr.metric, pr.previous)}
+                    {formatPRValue(pr.metric, pr.previous, data.unit)}
                   </span>
                 </span>
               </div>
@@ -850,8 +858,16 @@ function FinishScreen({
   );
 }
 
-function formatPRValue(metric: string, value: number): string {
-  if (metric === "weight") return `+${Math.round(value)} kg`;
+function formatPRValue(
+  metric: string,
+  value: number,
+  unit: "kg" | "lb" = "kg",
+): string {
+  if (metric === "weight") {
+    return unit === "lb"
+      ? `+${Math.round(value * 2.20462)} lb`
+      : `+${Math.round(value)} kg`;
+  }
   if (metric === "duration") return `${Math.round(value)}s`;
   return `${Math.round(value)} reps`;
 }

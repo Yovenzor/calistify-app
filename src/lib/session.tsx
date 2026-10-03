@@ -65,11 +65,12 @@ interface SessionContextValue {
   workout: ActiveWorkout | null;
   /** ms elapsed on the workout timer (excludes paused time) */
   elapsedMs: number;
+  /** latest wall-clock time, ticked once per second */
+  now: number;
   restEndsAt: number | null;
   restDurationSec: number;
 
   startWorkout: (name: string, exercises: SessionExercise[]) => void;
-  resumeWorkout: () => void;
   setWorkoutName: (name: string) => void;
   pauseToggle: () => void;
   discardWorkout: () => void;
@@ -100,7 +101,7 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
     typeof window === "undefined" ? null : loadStored(),
   );
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
-  const [, setTick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const restTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const restDurationSec = profile?.restDurationSec ?? 90;
@@ -111,11 +112,13 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem(STORAGE_KEY);
   }, [workout]);
 
-  /* wall clock tick for rest countdown completion */
+  /* wall clock tick for timers — only while a workout or rest is running */
+  const timing = workout !== null || restEndsAt !== null;
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    if (!timing) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [timing]);
 
   const beep = useCallback(() => {
     if (!profile?.timerSound) return;
@@ -233,9 +236,9 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
 
   const elapsedMs = useMemo(() => {
     if (!workout) return 0;
-    const end = workout.paused && workout.pausedAt ? workout.pausedAt : Date.now();
+    const end = workout.paused && workout.pausedAt ? workout.pausedAt : now;
     return Math.max(0, end - workout.startedAt - workout.pausedTotalMs);
-  }, [workout, workout?.paused, workout?.pausedAt, workout?.pausedTotalMs]);
+  }, [workout, now]);
 
   const addExercise = useCallback(
     (exerciseId: string) => {
@@ -379,14 +382,17 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
   const value: SessionContextValue = {
     workout,
     elapsedMs,
+    now,
     restEndsAt,
     restDurationSec,
     startWorkout,
-    resumeWorkout: () => {},
     setWorkoutName,
     pauseToggle,
     discardWorkout,
-    clearWorkout: () => setWorkout(null),
+    clearWorkout: () => {
+      clearRest();
+      setWorkout(null);
+    },
     addExercise,
     removeExercise,
     addSet,

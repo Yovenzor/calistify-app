@@ -1,6 +1,7 @@
 import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/Logo";
 import { Onboarding } from "@/components/Onboarding";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAthlete } from "@/hooks/use-athlete";
 import { useSession } from "@/lib/session";
 import { Loader2, Play } from "lucide-react";
@@ -60,9 +61,21 @@ export function AppShell() {
             </Link>
             <Link
               to="/app/profile"
-              className="max-w-[45%] truncate text-[13px] font-semibold text-foreground transition-colors hover:text-primary"
+              className="flex max-w-[55%] items-center gap-2 transition-opacity hover:opacity-80"
+              aria-label="Profile"
             >
-              {profile.name}
+              <span className="truncate text-[13px] font-semibold text-foreground">
+                {profile.name}
+              </span>
+              <Avatar className="size-7 border border-primary/30">
+                <AvatarImage
+                  src={profile.imageUrl ?? undefined}
+                  alt={profile.name}
+                />
+                <AvatarFallback className="bg-secondary text-[11px] font-bold text-primary">
+                  {(profile.name || "A").slice(0, 1).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
             </Link>
           </div>
         </header>

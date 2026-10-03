@@ -19,9 +19,9 @@ export function ProgressChart({
   const H = 150;
   const PAD = 6;
 
-  const { path, area, coords, max, min, labels } = useMemo(() => {
+  const { path, area, coords, max } = useMemo(() => {
     if (points.length === 0) {
-      return { path: "", area: "", coords: [], max: 0, min: 0, labels: [] as { x: number; y: number; p: ChartPoint }[] };
+      return { path: "", area: "", coords: [], max: 0 };
     }
     const values = points.map((p) => p.value);
     const rawMax = Math.max(...values);
@@ -45,7 +45,7 @@ export function ProgressChart({
       .join(" ");
     const area = `${d} L${coords[coords.length - 1].x.toFixed(1)},${H} L${coords[0].x.toFixed(1)},${H} Z`;
 
-    return { path: d, area, coords, max: rawMax, min: rawMin, labels: coords };
+    return { path: d, area, coords, max: rawMax };
   }, [points]);
 
   if (points.length === 0) return null;

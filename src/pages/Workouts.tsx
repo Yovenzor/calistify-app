@@ -9,7 +9,8 @@ import { useNavigate } from "react-router";
 
 /** Full workout history, newest first, with month grouping and search. */
 export default function Workouts() {
-  const { workouts, loading } = useAthlete();
+  const { workouts, loading, profile } = useAthlete();
+  const unit = profile?.weightUnit ?? "kg";
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -108,7 +109,7 @@ export default function Workouts() {
               <SectionLabel>{month}</SectionLabel>
               <div className="space-y-3">
                 {items.map((w) => (
-                  <WorkoutCard key={w._id} workout={w} />
+                  <WorkoutCard key={w._id} workout={w} unit={unit} />
                 ))}
               </div>
             </div>

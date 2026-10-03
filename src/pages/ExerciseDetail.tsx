@@ -3,6 +3,7 @@ import { DifficultyBadge, EmptyState, SectionLabel } from "@/components/AppUI";
 import { Button } from "@/components/ui/button";
 import { getExercise } from "@/lib/exercises";
 import { MUSCLE_LABELS, type MuscleGroup } from "@/lib/muscles";
+import { useAthlete } from "@/hooks/use-athlete";
 import { formatFullDate, formatVolume } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, BarChart3, Dumbbell, History, Trophy } from "lucide-react";
@@ -20,6 +21,8 @@ export default function ExerciseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("history");
+  const { profile } = useAthlete();
+  const unit = profile?.weightUnit ?? "kg";
   const def = id ? getExercise(id) : undefined;
   const data = useQuery(
     api.workouts.exerciseHistory,
@@ -183,7 +186,9 @@ export default function ExerciseDetail() {
                         <span className="num">
                           {set.isBodyweight && set.weightKg === 0
                             ? "Bodyweight"
-                            : `+${Math.round(set.weightKg)} kg`}{" "}
+                            : unit === "lb"
+                              ? `${set.isBodyweight ? "BW + " : ""}${Math.round(set.weightKg * 2.20462)} lb`
+                              : `${set.isBodyweight ? "BW + " : ""}${Math.round(set.weightKg)} kg`}{" "}
                           ×{" "}
                           {set.durationSec
                             ? `${Math.round(set.durationSec)}s`
@@ -225,7 +230,9 @@ export default function ExerciseDetail() {
                 </div>
                 <p className="num text-[22px] font-bold text-primary">
                   {r.metric === "weight"
-                    ? `+${Math.round(r.value)} kg`
+                    ? unit === "lb"
+                      ? `+${Math.round(r.value * 2.20462)} lb`
+                      : `+${Math.round(r.value)} kg`
                     : r.metric === "duration"
                       ? `${Math.round(r.value)}s`
                       : `${Math.round(r.value)} reps`}
@@ -251,7 +258,7 @@ export default function ExerciseDetail() {
             />
             <StatTile
               label="Total Volume"
-              value={formatVolume(stats.totalVolume, "kg")}
+              value={formatVolume(stats.totalVolume, unit)}
             />
             <StatTile label="Total Reps" value={String(stats.totalReps)} />
             <StatTile label="Total Sets" value={String(stats.totalSets)} />
@@ -259,7 +266,11 @@ export default function ExerciseDetail() {
               label="Best Set"
               value={
                 stats.bestWeight > 0
-                  ? `${stats.bestReps} @ +${Math.round(stats.bestWeight)} kg`
+                  ? `${stats.bestReps} @ ${
+                      unit === "lb"
+                        ? `+${Math.round(stats.bestWeight * 2.20462)} lb`
+                        : `+${Math.round(stats.bestWeight)} kg`
+                    }`
                   : `${stats.bestReps} reps`
               }
             />
