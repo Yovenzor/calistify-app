@@ -13,10 +13,10 @@ type MusclePath = (id: MuscleGroup, d: string) => ReactNode;
 /* ── palette ──────────────────────────────────────────────────────────── */
 const LIME: [number, number, number] = [182, 255, 0];
 const GRAY: [number, number, number] = [210, 210, 210];
-const REST_FILL = "#c4c4c4";
-const STATIC_FILL = "#8b8b8b";
-const HAIR_FILL = "#6b6b6b";
-const GROOVE = "#141414";
+const REST_FILL = "#dcdcdc";
+const STATIC_FILL = "#c9c9c9";
+const HAIR_FILL = "#585858";
+const GROOVE = "#0d0d0d";;
 
 /** Resting muscle is anatomical gray; trained muscles blend toward lime. */
 function mix(a: [number, number, number], b: [number, number, number], t: number) {
@@ -26,20 +26,24 @@ function mix(a: [number, number, number], b: [number, number, number], t: number
 
 /** Non-interactive anatomical detail (serratus, adductor, hair, hands...). */
 function staticPath(d: string, fill = STATIC_FILL, bump = true): ReactNode {
+  if (!bump) return <path d={d} fill={fill} />;
   return (
-    <path
-      d={d}
-      fill={fill}
-      stroke={GROOVE}
-      strokeOpacity={0.4}
-      strokeWidth={0.8}
-      filter={bump ? "url(#mm-3d)" : undefined}
-    />
+    <>
+      <path
+        d={d}
+        fill={fill}
+        stroke={GROOVE}
+        strokeOpacity={0.5}
+        strokeWidth={0.9}
+        filter="url(#mm-3d)"
+      />
+      <path d={d} fill="url(#mm-shade)" style={{ pointerEvents: "none" }} />
+    </>
   );
 }
 
 /** Dark muscle groove / striation line (pointer-transparent). */
-function grooveLine(d: string, opacity = 0.5, width = 1): ReactNode {
+function grooveLine(d: string, opacity = 0.62, width = 1.15): ReactNode {
   return (
     <path
       d={d}
@@ -72,21 +76,28 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
   const mp: MusclePath = (id, d) => {
     const isSel = selected === id;
     return (
-      <path
-        d={d}
-        fill={fillFor(id)}
-        stroke={isSel ? "#b6ff00" : GROOVE}
-        strokeOpacity={isSel ? 1 : 0.55}
-        strokeWidth={isSel ? 2 : 1.1}
-        className="cursor-pointer transition-all duration-300"
-        onClick={() => setSelected(isSel ? null : id)}
-        filter={isSel ? undefined : "url(#mm-3d)"}
-        style={
-          isSel
-            ? { filter: "url(#mm-3d) drop-shadow(0 0 6px rgba(182,255,0,0.6))" }
-            : undefined
-        }
-      />
+      <>
+        <path
+          d={d}
+          fill={fillFor(id)}
+          stroke={isSel ? "#b6ff00" : GROOVE}
+          strokeOpacity={isSel ? 1 : 0.7}
+          strokeWidth={isSel ? 2.2 : 1.4}
+          className="cursor-pointer transition-all duration-300"
+          onClick={() => setSelected(isSel ? null : id)}
+          filter={isSel ? undefined : "url(#mm-3d)"}
+          style={
+            isSel
+              ? {
+                  filter:
+                    "url(#mm-3d) drop-shadow(0 0 6px rgba(182,255,0,0.6))",
+                }
+              : undefined
+          }
+        />
+        {/* volume overlay: lit top-left, shadowed bottom-right */}
+        <path d={d} fill="url(#mm-shade)" style={{ pointerEvents: "none" }} />
+      </>
     );
   };
 
@@ -105,15 +116,22 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
         aria-label="Anatomical muscle map with detailed front and back views"
       >
         <defs>
-          {/* soft cylinder shading for limbs + torso base */}
+          {/* dark silhouette base — light muscle bellies pop against it */}
           <linearGradient id="mm-body" x1="0" y1="0" x2="1" y2="0.25">
-            <stop offset="0" stopColor="#c6c6c6" />
-            <stop offset="0.45" stopColor="#9c9c9c" />
-            <stop offset="1" stopColor="#696969" />
+            <stop offset="0" stopColor="#6d6d6d" />
+            <stop offset="0.45" stopColor="#4e4e4e" />
+            <stop offset="1" stopColor="#353535" />
           </linearGradient>
           <linearGradient id="mm-head" x1="0.15" y1="0" x2="0.85" y2="1">
-            <stop offset="0" stopColor="#d2d2d2" />
-            <stop offset="1" stopColor="#8c8c8c" />
+            <stop offset="0" stopColor="#d9d9d9" />
+            <stop offset="1" stopColor="#9b9b9b" />
+          </linearGradient>
+          {/* per-muscle volume: highlight top-left, shadow bottom-right */}
+          <linearGradient id="mm-shade" x1="0.05" y1="0" x2="0.9" y2="1">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.3" />
+            <stop offset="0.35" stopColor="#ffffff" stopOpacity="0.05" />
+            <stop offset="0.62" stopColor="#000000" stopOpacity="0.08" />
+            <stop offset="1" stopColor="#000000" stopOpacity="0.38" />
           </linearGradient>
           {/* beveled relief: flat fills read as rendered 3D muscle bellies */}
           <filter id="mm-3d" x="-20%" y="-20%" width="140%" height="140%">
@@ -121,7 +139,7 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
             <feSpecularLighting
               in="soft"
               surfaceScale="3.5"
-              specularConstant="0.85"
+              specularConstant="0.7"
               specularExponent="22"
               lightingColor="#ffffff"
               result="spec"
@@ -172,7 +190,7 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
           x="115"
           y="642"
           textAnchor="middle"
-          fill="#5A5A5A"
+          fill="#6b6b6b"
           fontSize="10"
           fontWeight="600"
           letterSpacing="3"
@@ -183,7 +201,7 @@ export function MuscleMap({ activation }: { activation: Activation[] }) {
           x="325"
           y="642"
           textAnchor="middle"
-          fill="#5A5A5A"
+          fill="#6b6b6b"
           fontSize="10"
           fontWeight="600"
           letterSpacing="3"

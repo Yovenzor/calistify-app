@@ -23,6 +23,22 @@ export function ProgressChart({
     if (points.length === 0) {
       return { path: "", area: "", coords: [], max: 0 };
     }
+    if (points.length === 1) {
+      /* one logged day would collapse to a zero-width path — draw a level line */
+      const p = points[0];
+      const y = p.value > 0 ? PAD + (H - PAD * 2) * 0.3 : H - PAD;
+      const d = `M${PAD},${y} L${W - PAD},${y}`;
+      const flat = `${d} L${W - PAD},${H} L${PAD},${H} Z`;
+      return {
+        path: d,
+        area: flat,
+        coords: [
+          { x: PAD, y, p },
+          { x: W - PAD, y, p },
+        ],
+        max: p.value,
+      };
+    }
     const values = points.map((p) => p.value);
     const rawMax = Math.max(...values);
     const rawMin = Math.min(...values);
@@ -105,6 +121,9 @@ export function ProgressChart({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+        {points.length === 1 && (
+          <circle cx={W / 2} cy={coords[0].y} r={3.5} fill="#b6ff00" />
+        )}
 
         {active && (
           <>
