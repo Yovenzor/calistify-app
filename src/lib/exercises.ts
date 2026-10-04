@@ -596,3 +596,51 @@ export function matchesExercise(exercise: Exercise, query: string): boolean {
   );
   return haystack.includes(q);
 }
+
+/**
+ * Local preview media per exercise (animated GIF, or a photo fallback).
+ * Missing id = no preview available yet — the UI hides the preview icon.
+ * Animations © Gym visual — gymvisual.com (attribution shown in the modal).
+ */
+export const EXERCISE_MEDIA: Record<string, string> = {
+  "push-up": "/assets/exercises/0662-I4hDWkc.gif",
+  "diamond-push-up": "/assets/exercises/0283-soIB2rj.gif",
+  "archer-push-up": "/assets/exercises/3294-A9qxk2F.gif",
+  dip: "/assets/exercises/0251-9WTm7dq.gif",
+  "weighted-dip": "/assets/exercises/1755-bZq4bwK.gif",
+  "handstand-push-up": "/assets/exercises/0471-rQxwMxO.gif",
+  "pull-up": "/assets/exercises/0652-lBDjFxJ.gif",
+  "chin-up": "/assets/exercises/1326-T2mxWqc.gif",
+  "weighted-pull-up": "/assets/exercises/0841-HMzLjXx.gif",
+  "wide-grip-pull-up": "/assets/exercises/1429-Qqi7bko.gif",
+  "muscle-up": "/assets/exercises/0631-yJUHKTn.gif",
+  "front-lever-row": "/assets/exercises/3295-hbY9wqG.gif",
+  "inverted-row": "/assets/exercises/0499-bZGHsAZ.gif",
+  "australian-pull-up": "/assets/exercises/0499-bZGHsAZ.gif",
+  "face-pull": "/assets/exercises/face-pull.jpg",
+  plank: "/assets/exercises/plank.jpg",
+  "ab-wheel-rollout": "/assets/exercises/0857-NAgVB3t.gif",
+  "hanging-leg-raise": "/assets/exercises/0472-I3tsCnC.gif",
+  "hanging-knee-raise": "/assets/exercises/0011-03lzqwk.gif",
+  "l-sit": "/assets/exercises/3419-UpWmA5E.gif",
+  "russian-twist": "/assets/exercises/0687-XVDdcoj.gif",
+  "handstand-hold": "/assets/exercises/3302-XooAdhl.gif",
+  "freestanding-handstand": "/assets/exercises/3302-XooAdhl.gif",
+  "tuck-front-lever": "/assets/exercises/3296-PkCN2lv.gif",
+  "front-lever": "/assets/exercises/3296-PkCN2lv.gif",
+  "tuck-back-lever": "/assets/exercises/3297-GaSzzuh.gif",
+  "v-sit": "/assets/exercises/3420-ZuXu4Eq.gif",
+  "human-flag-hold": "/assets/exercises/3303-pQ0Mx1Z.gif",
+  "muscle-up-hold": "/assets/exercises/0631-yJUHKTn.gif",
+  "bodyweight-squat": "/assets/exercises/bodyweight-squat.jpg",
+  "jump-squat": "/assets/exercises/0514-LIlE5Tn.gif",
+  lunge: "/assets/exercises/1460-IZVHb27.gif",
+  "pistol-squat": "/assets/exercises/0544-5bpPTHv.gif",
+  "glute-bridge": "/assets/exercises/3013-u0cNiij.gif",
+  "single-leg-calf-raise": "/assets/exercises/1373-bJYHBIN.gif",
+  "bulgarian-split-squat": "/assets/exercises/2368-9E25EOx.gif",
+  "frog-stand": "/assets/exercises/3301-rQhGcin.gif",
+  "crow-strength-hold": "/assets/exercises/3301-rQhGcin.gif",
+  "tuck-planche": "/assets/exercises/3301-rQhGcin.gif",
+  "planche-lean": "/assets/exercises/3300-LYJodFS.gif",
+};

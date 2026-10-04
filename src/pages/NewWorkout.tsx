@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { EmptyState, SectionLabel } from "@/components/AppUI";
+import { ExercisePreview } from "@/components/ExercisePreview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAthlete } from "@/hooks/use-athlete";
@@ -399,8 +400,9 @@ export default function NewWorkout() {
                           )}
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-[13px] font-medium">
-                              {ex.name}
+                            <p className="flex items-center gap-1.5 text-[13px] font-medium">
+                              <span className="truncate">{ex.name}</span>
+                              <ExercisePreview exercise={ex} />
                             </p>
                             <p className="truncate text-[10px] text-muted-foreground">
                               {ex.primary.join(" · ")} · {ex.equipment}

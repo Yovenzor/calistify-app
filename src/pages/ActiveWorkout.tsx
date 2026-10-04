@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import { ExercisePreview } from "@/components/ExercisePreview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAthlete } from "@/hooks/use-athlete";
@@ -657,8 +658,9 @@ function ExercisePicker({
                   className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/30"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium">
-                      {ex.name}
+                    <p className="flex items-center gap-1.5 text-[13px] font-medium">
+                      <span className="truncate">{ex.name}</span>
+                      <ExercisePreview exercise={ex} />
                     </p>
                     <p className="truncate text-[10px] text-muted-foreground">
                       {ex.difficulty} · {ex.primary.join(", ")}
