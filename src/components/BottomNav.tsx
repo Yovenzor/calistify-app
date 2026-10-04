@@ -1,11 +1,5 @@
 import { cn } from "@/lib/utils";
-import {
-  Dumbbell,
-  House,
-  ListChecks,
-  TrendingUp,
-  Trophy,
-} from "lucide-react";
+import { Dumbbell, House, ListChecks, TrendingUp, Trophy } from "lucide-react";
 import { NavLink } from "react-router";
 
 const TABS = [
@@ -19,7 +13,7 @@ const TABS = [
 /** Fixed bottom tab bar — the mobile replacement for the desktop sidebar. */
 export function BottomNav() {
   return (
-    <nav className="safe-b fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[440px] border-t border-border bg-[#080808]/95 backdrop-blur-xl">
+    <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[440px] border-t border-border bg-[#080808]/95 backdrop-blur-xl">
       <ul className="flex items-stretch justify-around px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {TABS.map(({ to, label, icon: Icon, end }) => (
           <li key={to} className="flex-1">

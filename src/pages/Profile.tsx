@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
 
@@ -270,132 +271,138 @@ export default function Profile() {
       </div>
 
       {/* Editor sheet */}
-      {editing && form && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setEditing(false)}
-          />
-          <div className="rise-in relative max-h-[92vh] w-full max-w-[440px] overflow-y-auto rounded-t-3xl border border-border bg-[#0a0a0a] px-5 pt-5 pb-8">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" />
-            <h2 className="text-[18px] font-bold">Edit Profile</h2>
+      {editing &&
+        form &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center">
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setEditing(false)}
+            />
+            <div className="rise-in relative max-h-[92dvh] w-full max-w-[440px] overflow-y-auto rounded-t-3xl border border-border bg-[#0a0a0a] px-5 pt-5 pb-[max(2rem,env(safe-area-inset-bottom))]">
+              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" />
+              <h2 className="text-[18px] font-bold">Edit Profile</h2>
 
-            <div className="mt-5 space-y-4">
-              <div>
-                <FieldLabel>Name</FieldLabel>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="h-11 border-border bg-[#0c0c0c] focus-visible:ring-primary/30"
-                  maxLength={40}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="mt-5 space-y-4">
                 <div>
-                  <FieldLabel>Bodyweight</FieldLabel>
+                  <FieldLabel>Name</FieldLabel>
                   <Input
-                    value={form.weight}
-                    onChange={(e) =>
-                      setForm({ ...form, weight: e.target.value })
-                    }
-                    inputMode="decimal"
-                    placeholder={form.unit === "kg" ? "72" : "159"}
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="h-11 border-border bg-[#0c0c0c] focus-visible:ring-primary/30"
+                    maxLength={40}
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <FieldLabel>Bodyweight</FieldLabel>
+                    <Input
+                      value={form.weight}
+                      onChange={(e) =>
+                        setForm({ ...form, weight: e.target.value })
+                      }
+                      inputMode="decimal"
+                      placeholder={form.unit === "kg" ? "72" : "159"}
+                      className="h-11 border-border bg-[#0c0c0c] focus-visible:ring-primary/30"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Unit</FieldLabel>
+                    <div className="flex rounded-xl border border-border bg-secondary p-1">
+                      {(["kg", "lb"] as const).map((u) => (
+                        <button
+                          key={u}
+                          type="button"
+                          onClick={() => setForm({ ...form, unit: u })}
+                          className={cn(
+                            "flex-1 rounded-lg py-1.5 text-[12px] font-semibold uppercase transition-all",
+                            form.unit === u
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {u}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <FieldLabel>Unit</FieldLabel>
-                  <div className="flex rounded-xl border border-border bg-secondary p-1">
-                    {(["kg", "lb"] as const).map((u) => (
-                      <button
-                        key={u}
-                        type="button"
-                        onClick={() => setForm({ ...form, unit: u })}
-                        className={cn(
-                          "flex-1 rounded-lg py-1.5 text-[12px] font-semibold uppercase transition-all",
-                          form.unit === u
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        {u}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <FieldLabel>Weekly workout goal</FieldLabel>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        weeklyGoal: String(
-                          Math.max(0, (parseInt(form.weeklyGoal, 10) || 0) - 1),
-                        ),
-                      })
-                    }
-                    className="h-11 w-11 rounded-xl border border-border bg-secondary text-lg font-bold"
-                  >
-                    −
-                  </button>
-                  <div className="flex h-11 flex-1 items-center justify-center rounded-xl border border-border bg-[#0c0c0c]">
-                    <span className="num text-[15px] font-bold">
-                      {form.weeklyGoal || "0"}
-                    </span>
-                    <span className="ml-1.5 text-[12px] text-muted-foreground">
-                      per week
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        weeklyGoal: String(
-                          Math.min(
-                            14,
-                            (parseInt(form.weeklyGoal, 10) || 0) + 1,
+                  <FieldLabel>Weekly workout goal</FieldLabel>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          weeklyGoal: String(
+                            Math.max(
+                              0,
+                              (parseInt(form.weeklyGoal, 10) || 0) - 1,
+                            ),
                           ),
-                        ),
-                      })
-                    }
-                    className="h-11 w-11 rounded-xl border border-border bg-secondary text-lg font-bold"
-                  >
-                    +
-                  </button>
+                        })
+                      }
+                      className="h-11 w-11 rounded-xl border border-border bg-secondary text-lg font-bold"
+                    >
+                      −
+                    </button>
+                    <div className="flex h-11 flex-1 items-center justify-center rounded-xl border border-border bg-[#0c0c0c]">
+                      <span className="num text-[15px] font-bold">
+                        {form.weeklyGoal || "0"}
+                      </span>
+                      <span className="ml-1.5 text-[12px] text-muted-foreground">
+                        per week
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          weeklyGoal: String(
+                            Math.min(
+                              14,
+                              (parseInt(form.weeklyGoal, 10) || 0) + 1,
+                            ),
+                          ),
+                        })
+                      }
+                      className="h-11 w-11 rounded-xl border border-border bg-secondary text-lg font-bold"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <p className="text-[11px] leading-4 text-muted-foreground">
-                Changing your bodyweight adds today to your weight history —
-                past workout volumes stay accurate.
-              </p>
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  Changing your bodyweight adds today to your weight history —
+                  past workout volumes stay accurate.
+                </p>
 
-              <div className="flex gap-3 pt-1">
-                <Button
-                  variant="secondary"
-                  className="h-12 flex-1 rounded-xl border border-border"
-                  onClick={() => setEditing(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="h-12 flex-1 rounded-xl font-semibold"
-                  onClick={save}
-                  disabled={busy}
-                >
-                  {busy ? "Saving…" : "Save Changes"}
-                </Button>
+                <div className="flex gap-3 pt-1">
+                  <Button
+                    variant="secondary"
+                    className="h-12 flex-1 rounded-xl border border-border"
+                    onClick={() => setEditing(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="h-12 flex-1 rounded-xl font-semibold"
+                    onClick={save}
+                    disabled={busy}
+                  >
+                    {busy ? "Saving…" : "Save Changes"}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

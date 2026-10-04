@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 
 type Mode = "empty" | "template" | "repeat";
@@ -210,7 +211,8 @@ export default function NewWorkout() {
                 >
                   <span className="text-sm font-medium">{w.name}</span>
                   <span className="text-[11px] text-muted-foreground">
-                    {formatRelativeDay(w.date)} · {formatDuration(w.durationSec)}
+                    {formatRelativeDay(w.date)} ·{" "}
+                    {formatDuration(w.durationSec)}
                   </span>
                 </button>
               ))}
@@ -268,7 +270,9 @@ export default function NewWorkout() {
                   className="flex items-center justify-between rounded-xl border border-border bg-[#0c0c0c] px-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium">{ex.name}</p>
+                    <p className="truncate text-[13px] font-medium">
+                      {ex.name}
+                    </p>
                     <p className="text-[10px] text-muted-foreground">
                       {ex.primary.join(" · ")}
                     </p>
@@ -316,91 +320,93 @@ export default function NewWorkout() {
       </Button>
 
       {/* Exercise picker sheet */}
-      {pickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setPickerOpen(false)}
-          />
-          <div className="rise-in relative flex max-h-[80vh] w-full max-w-[440px] flex-col rounded-t-3xl border border-border bg-[#0a0a0a]">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <p className="text-[15px] font-semibold">Add Exercise</p>
-              <button
-                type="button"
-                onClick={() => setPickerOpen(false)}
-                className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
-                aria-label="Close"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+      {pickerOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center">
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setPickerOpen(false)}
+            />
+            <div className="rise-in relative flex max-h-[80dvh] w-full max-w-[440px] flex-col rounded-t-3xl border border-border bg-[#0a0a0a]">
+              <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                <p className="text-[15px] font-semibold">Add Exercise</p>
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(false)}
+                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
 
-            <div className="border-b border-border px-5 py-3">
-              <div className="relative">
-                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name, muscle, equipment..."
-                  className="h-10 border-border bg-[#0c0c0c] pl-9 focus-visible:ring-primary/30"
-                  autoFocus
-                />
+              <div className="border-b border-border px-5 py-3">
+                <div className="relative">
+                  <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search by name, muscle, equipment..."
+                    className="h-10 border-border bg-[#0c0c0c] pl-9 focus-visible:ring-primary/30"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 pt-3 pb-[max(2rem,env(safe-area-inset-bottom))]">
+                {filtered.length === 0 ? (
+                  <EmptyState
+                    icon={Search}
+                    title="No exercises found"
+                    description="Try a different search or filter."
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    {filtered.map((ex) => {
+                      const added = exerciseIds.includes(ex.id);
+                      return (
+                        <button
+                          key={ex.id}
+                          type="button"
+                          onClick={() => {
+                            setExerciseIds((ids) =>
+                              added
+                                ? ids.filter((i) => i !== ex.id)
+                                : [...ids, ex.id],
+                            );
+                          }}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all",
+                            added
+                              ? "border-primary/50 bg-primary/10"
+                              : "border-border bg-card hover:border-primary/25",
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-[13px] font-medium">
+                              {ex.name}
+                            </p>
+                            <p className="truncate text-[10px] text-muted-foreground">
+                              {ex.primary.join(" · ")} · {ex.equipment}
+                            </p>
+                          </div>
+                          {added ? (
+                            <span className="text-[11px] font-semibold text-primary">
+                              Added
+                            </span>
+                          ) : (
+                            <Dumbbell className="size-4 text-muted-foreground" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-
-            <div className="flex-1 overflow-y-auto px-5 py-3">
-              {filtered.length === 0 ? (
-                <EmptyState
-                  icon={Search}
-                  title="No exercises found"
-                  description="Try a different search or filter."
-                />
-              ) : (
-                <div className="space-y-2 pb-6">
-                  {filtered.map((ex) => {
-                    const added = exerciseIds.includes(ex.id);
-                    return (
-                      <button
-                        key={ex.id}
-                        type="button"
-                        onClick={() => {
-                          setExerciseIds((ids) =>
-                            added
-                              ? ids.filter((i) => i !== ex.id)
-                              : [...ids, ex.id],
-                          );
-                        }}
-                        className={cn(
-                          "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all",
-                          added
-                            ? "border-primary/50 bg-primary/10"
-                            : "border-border bg-card hover:border-primary/25",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-medium">
-                            {ex.name}
-                          </p>
-                          <p className="truncate text-[10px] text-muted-foreground">
-                            {ex.primary.join(" · ")} · {ex.equipment}
-                          </p>
-                        </div>
-                        {added ? (
-                          <span className="text-[11px] font-semibold text-primary">
-                            Added
-                          </span>
-                        ) : (
-                          <Dumbbell className="size-4 text-muted-foreground" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

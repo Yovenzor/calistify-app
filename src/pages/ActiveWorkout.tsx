@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 
 /**
@@ -554,7 +555,7 @@ export function RestTimerBar() {
           style={{ width: `${progress * 100}%` }}
         />
       </div>
-      <div className="flex items-center justify-between px-5 py-3">
+      <div className="flex items-center justify-between px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-2">
           <Timer className="size-4 text-primary" />
           <div>
@@ -617,13 +618,13 @@ function ExercisePicker({
       )
     : EXERCISES;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="rise-in relative flex max-h-[82vh] w-full max-w-[440px] flex-col rounded-t-3xl border border-border bg-[#0a0a0a]">
+      <div className="rise-in relative flex max-h-[82dvh] w-full max-w-[440px] flex-col rounded-t-3xl border border-border bg-[#0a0a0a]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <p className="text-[15px] font-semibold">Add Exercise</p>
           <button
@@ -647,7 +648,7 @@ function ExercisePicker({
             />
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-3 pb-8">
+        <div className="flex-1 overflow-y-auto px-5 pt-3 pb-[max(2rem,env(safe-area-inset-bottom))]">
           {list.length === 0 ? (
             <p className="py-10 text-center text-[13px] text-muted-foreground">
               No exercises found. Try a different search.
@@ -679,7 +680,8 @@ function ExercisePicker({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

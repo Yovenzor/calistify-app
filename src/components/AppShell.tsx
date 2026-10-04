@@ -91,7 +91,7 @@ export function AppShell() {
         className={
           isActiveWorkoutRoute
             ? "fade-in flex-1 px-4 pt-4 pb-32"
-            : "fade-in flex-1 px-5 pt-5 pb-28"
+            : "fade-in flex-1 px-5 pt-5 pb-32"
         }
       >
         <Outlet />
