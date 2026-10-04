@@ -9,16 +9,27 @@ import { EXERCISES, getExercise, matchesExercise } from "@/lib/exercises";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
+  Check,
   Dumbbell,
   FilePlus2,
   Play,
+  Plus,
   Repeat,
   Save,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 
@@ -40,6 +51,7 @@ export default function NewWorkout() {
   const [exerciseIds, setExerciseIds] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
   const [repeatId, setRepeatId] = useState<string | null>(null);
   const repeatDetail = useQuery(
     api.workouts.get,
@@ -52,6 +64,11 @@ export default function NewWorkout() {
     () => EXERCISES.filter((e) => matchesExercise(e, query)),
     [query],
   );
+
+  const closePicker = () => {
+    setPickerOpen(false);
+    setSelected([]);
+  };
 
   const handleStart = () => {
     const exercises: SessionExercise[] = exerciseIds.map((id) => ({
@@ -256,29 +273,33 @@ export default function NewWorkout() {
               const ex = getExercise(id);
               if (!ex) return null;
               return (
-                <div
+                <SwipeRow
                   key={`${id}-${idx}`}
-                  className="flex items-center justify-between rounded-xl border border-border bg-[#0c0c0c] px-3 py-2.5"
+                  onDelete={() =>
+                    setExerciseIds((ids) => ids.filter((_, i) => i !== idx))
+                  }
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium">
-                      {ex.name}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {ex.primary.join(" · ")}
-                    </p>
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-[#0c0c0c] px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium">
+                        {ex.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {ex.primary.join(" · ")}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExerciseIds((ids) => ids.filter((_, i) => i !== idx))
+                      }
+                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive"
+                      aria-label={`Remove ${ex.name}`}
+                    >
+                      <X className="size-3.5" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExerciseIds((ids) => ids.filter((_, i) => i !== idx))
-                    }
-                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive"
-                    aria-label={`Remove ${ex.name}`}
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
+                </SwipeRow>
               );
             })
           )}
@@ -316,14 +337,14 @@ export default function NewWorkout() {
           <div className="fixed inset-0 z-50 flex items-end justify-center">
             <div
               className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-              onClick={() => setPickerOpen(false)}
+              onClick={closePicker}
             />
             <div className="rise-in relative flex max-h-[80dvh] w-full max-w-[440px] flex-col rounded-t-3xl border border-border bg-[#0a0a0a]">
               <div className="flex items-center justify-between border-b border-border px-5 py-4">
                 <p className="text-[15px] font-semibold">Add Exercise</p>
                 <button
                   type="button"
-                  onClick={() => setPickerOpen(false)}
+                  onClick={closePicker}
                   className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
                   aria-label="Close"
                 >
@@ -355,22 +376,26 @@ export default function NewWorkout() {
                   <div className="space-y-2">
                     {filtered.map((ex) => {
                       const added = exerciseIds.includes(ex.id);
+                      const isSelected = selected.includes(ex.id);
                       return (
                         <button
                           key={ex.id}
                           type="button"
-                          onClick={() => {
-                            setExerciseIds((ids) =>
-                              added
-                                ? ids.filter((i) => i !== ex.id)
-                                : [...ids, ex.id],
-                            );
-                          }}
+                          disabled={added}
+                          onClick={() =>
+                            setSelected((s) =>
+                              isSelected
+                                ? s.filter((i) => i !== ex.id)
+                                : [...s, ex.id],
+                            )
+                          }
                           className={cn(
                             "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all",
                             added
-                              ? "border-primary/50 bg-primary/10"
-                              : "border-border bg-card hover:border-primary/25",
+                              ? "border-border bg-card opacity-60"
+                              : isSelected
+                                ? "border-primary/60 bg-primary/10"
+                                : "border-border bg-card hover:border-primary/25",
                           )}
                         >
                           <div className="min-w-0">
@@ -385,6 +410,11 @@ export default function NewWorkout() {
                             <span className="text-[11px] font-semibold text-primary">
                               Added
                             </span>
+                          ) : isSelected ? (
+                            <span className="flex items-center gap-1 text-[11px] font-semibold text-primary">
+                              <Check className="size-3.5" />
+                              Selected
+                            </span>
                           ) : (
                             <Dumbbell className="size-4 text-muted-foreground" />
                           )}
@@ -394,10 +424,135 @@ export default function NewWorkout() {
                   </div>
                 )}
               </div>
+
+              {selected.length > 0 && (
+                <div className="border-t border-border px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                  <Button
+                    onClick={() => {
+                      setExerciseIds((ids) => [
+                        ...ids,
+                        ...selected.filter((id) => !ids.includes(id)),
+                      ]);
+                      closePicker();
+                    }}
+                    className="h-12 w-full rounded-xl text-[15px] font-semibold shadow-[0_10px_30px_-12px_rgba(182,255,0,0.6)]"
+                  >
+                    <Plus className="size-4" />
+                    Add {selected.length}{" "}
+                    {selected.length === 1 ? "Exercise" : "Exercises"}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>,
           document.body,
         )}
+    </div>
+  );
+}
+
+/* ── Swipe-to-delete row ────────────────────────────────────────────── */
+
+const SWIPE_OFFSET = 88;
+const SWIPE_COMMIT = 44;
+
+/**
+ * Row that reveals a Delete action when swiped left. Pointer events cover
+ * both touch and mouse; vertical scrolling stays with the page.
+ */
+function SwipeRow({
+  onDelete,
+  children,
+}: {
+  onDelete: () => void;
+  children: ReactNode;
+}) {
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dxRef = useRef(0);
+  const originX = useRef(0);
+  const originY = useRef(0);
+  const baseX = useRef(0);
+  const active = useRef(false);
+  const moved = useRef(false);
+
+  const apply = (value: number) => {
+    dxRef.current = value;
+    setDx(value);
+  };
+
+  const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    active.current = true;
+    moved.current = false;
+    originX.current = e.clientX;
+    originY.current = e.clientY;
+    baseX.current = dxRef.current;
+  };
+
+  const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!active.current) return;
+    const delta = e.clientX - originX.current;
+    const vertical = e.clientY - originY.current;
+    if (!moved.current) {
+      if (Math.abs(vertical) > 8 && Math.abs(vertical) > Math.abs(delta)) {
+        active.current = false; // vertical scroll — hand it back to the page
+        return;
+      }
+      if (Math.abs(delta) < 8) return;
+      moved.current = true;
+      setDragging(true);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    apply(Math.min(0, Math.max(-SWIPE_OFFSET, baseX.current + delta)));
+  };
+
+  const handlePointerEnd = () => {
+    if (!active.current) return;
+    active.current = false;
+    if (!moved.current) return;
+    setDragging(false);
+    apply(dxRef.current < -SWIPE_COMMIT ? -SWIPE_OFFSET : 0);
+  };
+
+  const handleClickCapture = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (moved.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    moved.current = false;
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      <div className="absolute inset-0 flex items-center justify-end bg-destructive/15 pr-3">
+        <button
+          type="button"
+          onClick={() => {
+            apply(0);
+            onDelete();
+          }}
+          className="flex items-center gap-1.5 rounded-lg bg-destructive px-3 py-2 text-[12px] font-semibold text-white"
+        >
+          <Trash2 className="size-3.5" />
+          Delete
+        </button>
+      </div>
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onClickCapture={handleClickCapture}
+        style={{
+          transform: `translateX(${dx}px)`,
+          transition: dragging ? "none" : "transform 0.2s ease",
+          touchAction: "pan-y",
+        }}
+        className="relative"
+      >
+        {children}
+      </div>
     </div>
   );
 }
