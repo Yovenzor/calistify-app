@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useAthlete } from "@/hooks/use-athlete";
 import { EXERCISES, getExercise } from "@/lib/exercises";
 import { formatClock, formatRestClock, formatVolume } from "@/lib/format";
+import { writeWorkoutToHealth } from "@/lib/healthNative";
 import { useSession, type SessionExercise } from "@/lib/session";
 import { computeWorkoutStats } from "@/lib/stats";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,12 @@ export default function ActiveWorkout() {
   const [finishError, setFinishError] = useState<string | null>(null);
   const [done, setDone] = useState<null | {
     workoutId: string;
-    stats: { exerciseCount: number; setCount: number; repCount: number; volume: number };
+    stats: {
+      exerciseCount: number;
+      setCount: number;
+      repCount: number;
+      volume: number;
+    };
     newPRs: {
       exerciseId: string;
       exerciseName: string;
@@ -75,7 +81,10 @@ export default function ActiveWorkout() {
         <p className="max-w-[260px] text-[13px] text-muted-foreground">
           Start a new session from the dashboard to begin logging sets.
         </p>
-        <Button onClick={() => navigate("/app/workout/new")} className="rounded-xl">
+        <Button
+          onClick={() => navigate("/app/workout/new")}
+          className="rounded-xl"
+        >
           Start Workout
         </Button>
       </div>
@@ -131,10 +140,20 @@ export default function ActiveWorkout() {
         setFinishing(false);
         return;
       }
+      // Fire-and-forget: also save the finished workout to Apple Health /
+      // Health Connect when the native integration is connected.
+      void writeWorkoutToHealth({
+        startedAt: workout.startedAt,
+        endedAt: workout.startedAt + elapsedMs,
+        title: workout.name,
+      });
       setDone({
         workoutId: result.workoutId,
         stats: result.stats,
-        newPRs: (result.newPRs ?? []).map((p) => ({ ...p, metric: String(p.metric) })),
+        newPRs: (result.newPRs ?? []).map((p) => ({
+          ...p,
+          metric: String(p.metric),
+        })),
         newAchievements: result.newAchievements ?? [],
         durationSec: Math.round(elapsedMs / 1000),
         name: workout.name,
@@ -258,15 +277,15 @@ export default function ActiveWorkout() {
           </p>
         )}
         {finishError && (
-          <p className="text-center text-[12px] text-destructive">{finishError}</p>
+          <p className="text-center text-[12px] text-destructive">
+            {finishError}
+          </p>
         )}
         <button
           type="button"
           onClick={() => {
             if (
-              window.confirm(
-                "Discard this workout? Logged sets will be lost.",
-              )
+              window.confirm("Discard this workout? Logged sets will be lost.")
             ) {
               session.discardWorkout();
               navigate("/app");
@@ -389,7 +408,9 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
                   ? "border-primary bg-primary text-primary-foreground shadow-[0_0_12px_rgba(182,255,0,0.4)]"
                   : "border-border bg-secondary text-muted-foreground hover:border-primary/40",
               )}
-              aria-label={set.completed ? "Mark set incomplete" : "Mark set complete"}
+              aria-label={
+                set.completed ? "Mark set incomplete" : "Mark set complete"
+              }
             >
               <Check className="size-3.5" strokeWidth={3} />
             </button>
@@ -406,7 +427,9 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
                 session.updateSet(
                   ex.instanceId,
                   set.id,
-                  Number.isFinite(parsed) ? { rpe: parsed } : { rpe: undefined },
+                  Number.isFinite(parsed)
+                    ? { rpe: parsed }
+                    : { rpe: undefined },
                 );
               }}
               className="num h-8 w-full rounded-lg border border-border bg-[#0c0c0c] px-1 text-center text-[11px] font-medium outline-none transition-colors focus:border-primary/50"
@@ -455,7 +478,12 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
           className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
         >
           Notes
-          <ChevronDown className={cn("size-3 transition-transform", notesOpen && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "size-3 transition-transform",
+              notesOpen && "rotate-180",
+            )}
+          />
         </button>
       </div>
 
@@ -463,7 +491,9 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
         <div className="border-t border-border/60 px-4 py-3">
           <Input
             value={ex.notes ?? ""}
-            onChange={(e) => session.setExerciseNotes(ex.instanceId, e.target.value)}
+            onChange={(e) =>
+              session.setExerciseNotes(ex.instanceId, e.target.value)
+            }
             placeholder="Notes for this exercise…"
             className="h-9 border-border bg-[#0c0c0c] text-[13px] focus-visible:ring-primary/30"
           />
@@ -517,7 +547,8 @@ function SetInput({
 /* ── Rest timer bar ────────────────────────────────────────────────────── */
 
 export function RestTimerBar() {
-  const { restEndsAt, adjustRest, skipRest, restDurationSec, now } = useSession();
+  const { restEndsAt, adjustRest, skipRest, restDurationSec, now } =
+    useSession();
 
   if (restEndsAt === null) return null;
   const remaining = Math.max(0, Math.ceil((restEndsAt - now) / 1000));
@@ -596,7 +627,10 @@ function ExercisePicker({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="rise-in relative flex max-h-[82vh] w-full max-w-[440px] flex-col rounded-t-3xl border border-border bg-[#0a0a0a]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <p className="text-[15px] font-semibold">Add Exercise</p>
@@ -639,7 +673,9 @@ function ExercisePicker({
                   className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/30"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium">{ex.name}</p>
+                    <p className="truncate text-[13px] font-medium">
+                      {ex.name}
+                    </p>
                     <p className="truncate text-[10px] text-muted-foreground">
                       {ex.difficulty} · {ex.primary.join(", ")}
                     </p>
@@ -687,7 +723,8 @@ function FinishScreen({
 }) {
   const { workouts } = useAthlete();
   const prev = useMemo(
-    () => workouts.find((w) => w.name === data.name && w._id !== data.workoutId),
+    () =>
+      workouts.find((w) => w.name === data.name && w._id !== data.workoutId),
     [workouts, data.name, data.workoutId],
   );
 

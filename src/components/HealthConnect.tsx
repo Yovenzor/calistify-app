@@ -1,69 +1,59 @@
-import { api } from "@/convex/_generated/api";
 import { SectionLabel } from "@/components/AppUI";
-import { formatNumber } from "@/lib/format";
-import { parseHealthExport } from "@/lib/appleHealth";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useMutation, useQuery } from "convex/react";
+import { formatNumber } from "@/lib/format";
 import {
+  checkHealthAccess,
+  healthAvailable,
+  isHealthConnected,
+  isNativeShell,
+  nativePlatform,
+  openHealthSettings,
+  readTodayActivity,
+  requestHealthAccess,
+  type HealthAccessStatus,
+  type HealthPlatform,
+  type TodayActivity,
+} from "@/lib/healthNative";
+import { cn } from "@/lib/utils";
+import {
+  Activity,
   AlertCircle,
   Apple,
   Check,
   CheckCircle2,
-  Copy,
+  ChevronDown,
+  ChevronUp,
+  Dumbbell,
   Footprints,
-  HeartPulse,
+  Flame,
   Link2,
   Loader2,
-  ShieldCheck,
+  Settings2,
   Smartphone,
-  Trash2,
-  Upload,
-  XCircle,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Status = { kind: "busy" | "done" | "error"; msg: string };
-type Platform = "ios" | "android";
+type Mode = "loading" | "browser" | "no-sdk" | "app";
 
-const CHUNK = 150; // days per mutation — keeps every call well under limits
-const CONSENT_KEY = "calistify_health_consent";
+const COPY: Record<
+  HealthPlatform,
+  { name: string; tagline: string; icon: typeof Apple }
+> = {
+  ios: {
+    name: "Apple Health",
+    tagline: "Sync your workouts and fitness data with Apple Health.",
+    icon: Apple,
+  },
+  android: {
+    name: "Health Connect",
+    tagline: "Sync your workouts and fitness data with Health Connect.",
+    icon: Smartphone,
+  },
+};
 
-function readConsent(): boolean {
-  try {
-    return localStorage.getItem(CONSENT_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function detectPlatform(): Platform {
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-  return /Android/i.test(ua) ? "android" : "ios";
-}
-
-/**
- * The user's private sync endpoint. HTTP actions are served on the
- * deployment's `.convex.site` domain — same host as VITE_CONVEX_URL but
- * with the `.cloud` suffix swapped.
- */
-function syncUrl(token: string): string {
-  const base = (import.meta.env.VITE_CONVEX_URL as string | undefined) ?? "";
-  const root = (
-    base || (typeof window !== "undefined" ? window.location.origin : "")
-  )
-    .replace(/\/+$/, "")
-    .replace(/\.convex\.cloud$/, ".convex.site");
-  return `${root}/api/health/${token}`;
-}
-
-function relTime(ts: number): string {
-  const days = Math.floor((Date.now() - ts) / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 30) return `${days} days ago`;
-  return new Date(ts).toLocaleDateString();
-}
+const HEALTH_CONNECT_STORE_URL =
+  "https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata";
 
 function StatusLine({ status }: { status: Status }) {
   const tone =
@@ -93,473 +83,437 @@ function StatusLine({ status }: { status: Status }) {
   );
 }
 
+function Tile({
+  value,
+  label,
+  icon: Icon,
+}: {
+  value: string;
+  label: string;
+  icon: typeof Footprints;
+}) {
+  return (
+    <div className="rounded-xl bg-secondary py-3 text-center">
+      <Icon className="mx-auto mb-1 size-3.5 text-primary" />
+      <p className="num text-[17px] font-bold">{value}</p>
+      <p className="text-[9px] tracking-[0.06em] text-muted-foreground uppercase">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function AccessChip({ label, granted }: { label: string; granted: boolean }) {
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold",
+        granted
+          ? "border-primary/40 bg-primary/10 text-primary"
+          : "border-border bg-card text-muted-foreground",
+      )}
+    >
+      {granted ? (
+        <Check className="size-3" />
+      ) : (
+        <span className="size-3 text-center leading-3">×</span>
+      )}
+      {label}
+    </span>
+  );
+}
+
 /**
- * Health Connection for the profile: a consent-gated flow (terms → device →
- * connect) that ends in a private sync endpoint — Health Connect bridges to
- * it via the HC Webhook app, iOS via a Shortcuts POST — plus a one-time
- * on-device Apple Health import for full history. Only aggregated daily
- * totals are ever stored.
+ * Health Integration (Profile): connects the app to the phone's REAL health
+ * platform — HealthKit permission screens on iPhone, Health Connect screens
+ * on Android — through the local native plugin in ios/ and android/. Status,
+ * including later revocation, comes from the platform itself; nothing is
+ * faked in the browser.
  */
 export function HealthConnect() {
-  const health = useQuery(api.health.overview);
-  const startConnection = useMutation(api.health.startConnection);
-  const disconnectMutation = useMutation(api.health.disconnect);
-  const importDays = useMutation(api.health.importDays);
-
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [status, setStatus] = useState<Status | null>(null);
-  const [agreed, setAgreed] = useState(readConsent);
-  const [stage, setStage] = useState<"consent" | "platform">(() =>
-    readConsent() ? "platform" : "consent",
+  const [mode, setMode] = useState<Mode>("loading");
+  const [platform, setPlatform] = useState<HealthPlatform>(
+    () => nativePlatform() ?? "ios",
   );
-  const [platform, setPlatform] = useState<Platform>(detectPlatform);
+  const [access, setAccess] = useState<HealthAccessStatus | null>(null);
+  const [tiles, setTiles] = useState<TodayActivity | null>(null);
+  const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
 
-  const onFile = async (file: File) => {
-    setStatus({ kind: "busy", msg: "Reading your health data…" });
-    await new Promise((r) => setTimeout(r, 30)); // let the label paint first
+  const accessRef = useRef<HealthAccessStatus | null>(null);
+  useEffect(() => {
+    accessRef.current = access;
+  }, [access]);
+
+  const connected = isHealthConnected(access);
+
+  /** Re-reads platform permissions (no UI) and refreshes the real tiles. */
+  const refreshAccess = async (): Promise<HealthAccessStatus | null> => {
     try {
-      const days = await parseHealthExport(file);
-      for (let i = 0; i < days.length; i += CHUNK) {
-        setStatus({
-          kind: "busy",
-          msg: `Syncing ${Math.min(i + CHUNK, days.length)} of ${days.length} days…`,
-        });
-        await importDays({
-          source: "apple_health",
-          days: days.slice(i, i + CHUNK),
-        });
+      const next = await checkHealthAccess();
+      setAccess(next);
+      if (isHealthConnected(next)) {
+        setTiles(await readTodayActivity());
+      } else {
+        setTiles(null);
       }
-      setStatus({
-        kind: "done",
-        msg: `History imported — ${days.length} days synced`,
-      });
-    } catch (err) {
-      setStatus({
-        kind: "error",
-        msg: err instanceof Error ? err.message : "Could not read that file",
-      });
+      return next;
+    } catch {
+      return accessRef.current;
     }
   };
+
+  useEffect(() => {
+    let alive = true;
+
+    const init = async () => {
+      if (!isNativeShell()) {
+        if (alive) setMode("browser");
+        return;
+      }
+      const native = nativePlatform();
+      if (native) setPlatform(native);
+      const availability = await healthAvailable();
+      if (!alive) return;
+      if (!availability.available) {
+        setMode("no-sdk");
+        return;
+      }
+      setMode("app");
+      try {
+        const current = await checkHealthAccess();
+        if (!alive) return;
+        setAccess(current);
+        if (isHealthConnected(current)) setTiles(await readTodayActivity());
+      } catch {
+        // first launch on iOS: nothing requested yet
+      }
+    };
+    void init();
+
+    // Revocation detection: re-check whenever the user returns to the app
+    // (e.g. after changing permissions in the Health / Health Connect app).
+    const onVisible = () => {
+      if (document.visibilityState !== "visible" || !alive) return;
+      const previous = accessRef.current;
+      void (async () => {
+        const next = await refreshAccess();
+        if (
+          previous &&
+          isHealthConnected(previous) &&
+          next &&
+          !isHealthConnected(next)
+        ) {
+          setStatus({
+            kind: "error",
+            msg: "Health access was removed — tap Connect to restore it.",
+          });
+          setManageOpen(false);
+        }
+      })();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      alive = false;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   const connect = async () => {
     setBusy(true);
-    setStatus({ kind: "busy", msg: "Opening your connection…" });
+    setStatus({
+      kind: "busy",
+      msg:
+        platform === "ios"
+          ? "Opening the Apple Health permission screen…"
+          : "Opening the Health Connect permission screen…",
+    });
     try {
-      await startConnection({
-        platform,
-        tzOffsetMin: -new Date().getTimezoneOffset(),
-        agreed: true,
-      });
-      setStatus({
-        kind: "done",
-        msg:
-          platform === "ios"
-            ? "Connected — set up auto-sync or import your history below"
-            : "Connected — finish setup with the HC Webhook app below",
-      });
+      const result = await requestHealthAccess();
+      setAccess(result);
+      if (isHealthConnected(result)) {
+        setTiles(await readTodayActivity());
+        setStatus({ kind: "done", msg: "Connected" });
+      } else {
+        setTiles(null);
+        setStatus({
+          kind: "error",
+          msg:
+            platform === "ios"
+              ? "Access was not granted. If the screen doesn't appear again, enable CALISTIFY in Health → Profile → Apps → CALISTIFY, then tap Connect."
+              : "Access was not granted — tap Connect to open the Health Connect screen again.",
+        });
+      }
     } catch (err) {
       setStatus({
         kind: "error",
-        msg: err instanceof Error ? err.message : "Could not connect",
+        msg:
+          err instanceof Error && err.message
+            ? err.message
+            : "Could not open the health permission screen.",
       });
     } finally {
       setBusy(false);
     }
   };
 
-  const copyEndpoint = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
+  const recheck = async () => {
+    setBusy(true);
+    setStatus({ kind: "busy", msg: "Checking your access…" });
+    const previous = access;
+    const next = await refreshAccess();
+    if (next && isHealthConnected(next)) {
+      setStatus({ kind: "done", msg: "Access confirmed" });
+    } else if (previous && isHealthConnected(previous)) {
       setStatus({
         kind: "error",
-        msg: "Copy failed — select the URL manually",
+        msg: "Health access was removed — tap Connect to restore it.",
       });
-    }
-  };
-
-  const doDisconnect = async () => {
-    if (
-      !window.confirm(
-        "Disconnect and permanently delete your stored health data?",
-      )
-    ) {
-      return;
-    }
-    setBusy(true);
-    try {
-      await disconnectMutation();
+    } else {
       setStatus({
-        kind: "done",
-        msg: "Disconnected — stored health data deleted",
+        kind: "error",
+        msg: "No access has been granted yet.",
       });
-      setStage(readConsent() ? "platform" : "consent");
-    } finally {
-      setBusy(false);
+    }
+    setBusy(false);
+  };
+
+  const openSettings = async () => {
+    setBusy(true);
+    const opened = await openHealthSettings();
+    setBusy(false);
+    if (!opened) {
+      setStatus({
+        kind: "error",
+        msg: "Open Health Connect from your phone's settings to manage permissions.",
+      });
     }
   };
 
-  const fileInput = (
-    <input
-      ref={fileRef}
-      type="file"
-      accept=".zip,.xml,application/zip,text/xml"
-      className="hidden"
-      onChange={(e) => {
-        const f = e.target.files?.[0];
-        if (f) void onFile(f);
-        e.target.value = "";
-      }}
-    />
-  );
-
-  if (health === undefined) {
+  if (mode === "loading") {
     return (
       <div>
-        <SectionLabel>Health Connection</SectionLabel>
-        <div className="h-[220px] animate-pulse rounded-2xl border border-border bg-card" />
+        <SectionLabel>Health Integration</SectionLabel>
+        <div className="h-[160px] animate-pulse rounded-2xl border border-border bg-card" />
       </div>
     );
   }
 
-  const conn = health.connection;
+  /* ── browser / desktop: honest fallback, never a fake flow ── */
+  if (mode === "browser") {
+    return (
+      <div>
+        <SectionLabel>Health Integration</SectionLabel>
+        <div className="rounded-2xl border border-border bg-card p-5 text-center">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+            <Activity className="size-6 text-primary" />
+          </span>
+          <p className="mt-3 text-[15px] font-bold">
+            Health integration is available on the mobile app.
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+            Open CALISTIFY on your iPhone or Android phone to connect Apple
+            Health or Health Connect with the phone's native permission screen.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  /* ── connected: stats, private endpoint, setup steps ── */
-  if (conn) {
-    const today = new Date().toLocaleDateString("en-CA");
-    const todayRow = health.days.find((d) => d.date === today);
-    const kcal =
-      todayRow &&
-      (todayRow.activeKcal !== undefined || todayRow.basalKcal !== undefined)
-        ? (todayRow.activeKcal ?? 0) + (todayRow.basalKcal ?? 0)
-        : undefined;
-    const week = health.days.slice(-7);
-    const maxSteps = Math.max(1, ...week.map((d) => d.steps ?? 0));
-    const url = syncUrl(conn.token);
-    const lastActivity = conn.lastSyncAt ?? health.lastImportedAt;
+  /* ── Android device without a usable Health Connect ── */
+  if (mode === "no-sdk") {
+    return (
+      <div>
+        <SectionLabel>Health Integration</SectionLabel>
+        <div className="rounded-2xl border border-border bg-card p-5 text-center">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+            <Smartphone className="size-6 text-primary" />
+          </span>
+          <p className="mt-3 text-[15px] font-bold">Health Connect required</p>
+          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+            This phone doesn't have an up-to-date Health Connect yet. Install or
+            update it, then come back to connect.
+          </p>
+          <a
+            href={HEALTH_CONNECT_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-primary text-[13px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Get Health Connect
+          </a>
+        </div>
+      </div>
+    );
+  }
 
+  const copy = COPY[platform];
+  const PlatformIcon = copy.icon;
+  const todayRow = tiles;
+
+  /* ── connected: real platform state + real native reads ── */
+  if (connected) {
+    const writeGranted = (access?.writeAuthorized ?? []).includes("workouts");
+    const readGranted = (access?.readAuthorized ?? []).includes("steps");
     return (
       <div>
         <SectionLabel
           action={
-            <span className="text-[10px] text-primary">
-              {lastActivity ? `Synced ${relTime(lastActivity)}` : "Connected"}
+            <span className="flex items-center gap-1 text-[10px] text-primary">
+              <Check className="size-3" />
+              Connected
             </span>
           }
         >
-          Health Connection
+          Health Integration
         </SectionLabel>
 
         <div className="rounded-2xl border border-border bg-card p-4">
-          {/* today's numbers */}
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-secondary py-3">
-              <p className="num text-[17px] font-bold">
-                {todayRow?.steps !== undefined
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+              <PlatformIcon className="size-5 text-primary" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[14px] font-bold">
+                {copy.name}
+                <CheckCircle2 className="ml-1.5 inline size-3.5 text-primary" />
+              </p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {copy.tagline}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <Tile
+              value={
+                todayRow?.steps !== undefined
                   ? formatNumber(todayRow.steps)
-                  : "—"}
-              </p>
-              <p className="text-[9px] tracking-[0.06em] text-muted-foreground uppercase">
-                Steps
-              </p>
-            </div>
-            <div className="rounded-xl bg-secondary py-3">
-              <p className="num text-[17px] font-bold">
-                {kcal !== undefined ? formatNumber(kcal) : "—"}
-              </p>
-              <p className="text-[9px] tracking-[0.06em] text-muted-foreground uppercase">
-                Calories
-              </p>
-            </div>
-            <div className="rounded-xl bg-secondary py-3">
-              <p className="num text-[17px] font-bold">
-                {todayRow?.exerciseMin !== undefined
-                  ? `${Math.round(todayRow.exerciseMin)}′`
-                  : "—"}
-              </p>
-              <p className="text-[9px] tracking-[0.06em] text-muted-foreground uppercase">
-                Exercise
-              </p>
-            </div>
+                  : "—"
+              }
+              label="Steps"
+              icon={Footprints}
+            />
+            <Tile
+              value={
+                todayRow?.kcal !== undefined ? formatNumber(todayRow.kcal) : "—"
+              }
+              label="Calories"
+              icon={Flame}
+            />
+            <Tile
+              value={
+                todayRow?.workouts !== undefined
+                  ? String(todayRow.workouts)
+                  : "—"
+              }
+              label="Workouts"
+              icon={Dumbbell}
+            />
           </div>
-
-          {/* last 7 days of steps */}
-          <div className="mt-4">
-            <div className="flex items-end justify-between gap-1.5">
-              {week.map((d) => {
-                const s = d.steps ?? 0;
-                const h =
-                  s > 0 ? Math.max(6, Math.round((s / maxSteps) * 52)) : 3;
-                const isToday = d.date === today;
-                return (
-                  <div
-                    key={d.date}
-                    className="flex flex-1 flex-col items-center gap-1.5"
-                  >
-                    <div
-                      className={
-                        s > 0
-                          ? isToday
-                            ? "w-full rounded-md bg-primary"
-                            : "w-full rounded-md bg-primary/40"
-                          : "w-full rounded-md bg-secondary"
-                      }
-                      style={{ height: h }}
-                    />
-                    <span className="text-[9px] text-muted-foreground">
-                      {new Date(`${d.date}T00:00:00`).toLocaleDateString(
-                        undefined,
-                        {
-                          weekday: "narrow",
-                        },
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-2 text-center text-[10px] text-muted-foreground">
-              Steps · last {week.length} days
-            </p>
-          </div>
-
-          {/* private sync endpoint */}
-          <div className="mt-4 border-t border-border/70 pt-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold">Your private sync URL</p>
-              <button
-                type="button"
-                onClick={() => void copyEndpoint(url)}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 text-[10px] font-semibold transition-colors hover:border-primary/40"
-              >
-                {copied ? (
-                  <Check className="size-3 text-primary" />
-                ) : (
-                  <Copy className="size-3" />
-                )}
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <code className="mt-2 block truncate rounded-lg bg-secondary px-2.5 py-2 text-[10px] text-muted-foreground select-all">
-              {url}
-            </code>
-            <p className="mt-1.5 text-[10px] leading-4 text-muted-foreground">
-              Like a password — keep it private. Anyone with it can write data
-              to your account.
-            </p>
-
-            {conn.platform === "android" ? (
-              <ol className="mt-3 list-decimal list-inside space-y-1.5 text-[11px] leading-4 text-muted-foreground">
-                <li>
-                  Install the free{" "}
-                  <a
-                    href="https://github.com/mcnaveen/health-connect-webhook"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-primary underline underline-offset-2"
-                  >
-                    HC Webhook
-                  </a>{" "}
-                  app (Android 8+).
-                </li>
-                <li>
-                  Add your private sync URL above as a webhook and enable the
-                  Steps and Calories data types.
-                </li>
-                <li>
-                  Grant it Health Connect permissions — everything syncs
-                  automatically in the background.
-                </li>
-              </ol>
-            ) : (
-              <ol className="mt-3 list-decimal list-inside space-y-1.5 text-[11px] leading-4 text-muted-foreground">
-                <li>
-                  In Shortcuts, add{" "}
-                  <b className="text-foreground">Get Health Samples</b> (Steps,
-                  Active Energy), then{" "}
-                  <b className="text-foreground">Get contents of URL</b> → POST
-                  with JSON body{" "}
-                  <code className="text-[10px] text-primary">
-                    {`{"steps": …, "calories": …}`}
-                  </code>{" "}
-                  using those sample values.
-                </li>
-                <li>
-                  Run it on a daily Automation — or use the one-time history
-                  import below.
-                </li>
-              </ol>
-            )}
-          </div>
-
-          {/* actions */}
-          <div className="mt-4 flex gap-2">
-            {conn.platform === "ios" && (
-              <Button
-                variant="secondary"
-                className="h-10 flex-1 rounded-xl border-border font-semibold"
-                disabled={busy}
-                onClick={() => fileRef.current?.click()}
-              >
-                <Upload className="mr-1.5 size-3.5" />
-                Import history
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              className="h-10 flex-1 rounded-xl border-border font-semibold text-destructive hover:bg-destructive/5"
-              disabled={busy}
-              onClick={() => void doDisconnect()}
-            >
-              <Trash2 className="mr-1.5 size-3.5" />
-              Disconnect
-            </Button>
-          </div>
-
-          {status && <StatusLine status={status} />}
-          {fileInput}
-        </div>
-      </div>
-    );
-  }
-
-  /* ── step 1: terms & permissions ── */
-  if (stage === "consent") {
-    const points = [
-      {
-        icon: Footprints,
-        title: "What we read",
-        text: "Daily steps, calories, exercise and sleep — from Fitness & Health on iPhone, or Health Connect on Android.",
-      },
-      {
-        icon: ShieldCheck,
-        title: "How it's protected",
-        text: "Only daily totals are stored, never raw records. iPhone exports are parsed on your device and discarded.",
-      },
-      {
-        icon: XCircle,
-        title: "Your control",
-        text: "Disconnect at any time and every stored health day is permanently deleted.",
-      },
-    ];
-    return (
-      <div>
-        <SectionLabel>Health Connection</SectionLabel>
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
-            <HeartPulse className="size-6 text-primary" />
-          </span>
-          <p className="mt-3 text-[16px] font-bold">Connect your health app</p>
-          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-            Grant Calistify permission to see your activity — and nothing else.
+          <p className="mt-2 text-center text-[10px] text-muted-foreground">
+            Read live from {copy.name} · steps & calories today, workouts this
+            week
           </p>
 
-          <ul className="mt-4 space-y-3">
-            {points.map((p) => (
-              <li key={p.title} className="flex gap-3">
-                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                  <p.icon className="size-3.5 text-primary" />
-                </span>
-                <span>
-                  <span className="block text-[12px] font-semibold">
-                    {p.title}
-                  </span>
-                  <span className="block text-[11px] leading-4 text-muted-foreground">
-                    {p.text}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-secondary p-3">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 size-4 shrink-0 accent-[#b6ff00]"
-            />
-            <span className="text-[11px] leading-4">
-              I understand and agree to share my health data with Calistify
-              under these terms.
-            </span>
-          </label>
-
-          <Button
-            className="mt-4 h-11 w-full rounded-xl font-semibold"
-            disabled={!agreed}
-            onClick={() => {
-              try {
-                localStorage.setItem(CONSENT_KEY, "1");
-              } catch {
-                /* private mode — still proceed */
-              }
-              setStage("platform");
-            }}
+          <button
+            type="button"
+            onClick={() => setManageOpen((open) => !open)}
+            className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-border text-[13px] font-semibold transition-colors hover:border-primary/40"
           >
-            Continue
-          </Button>
+            <Settings2 className="size-4" />
+            Manage Connection
+            {manageOpen ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+          </button>
+
+          {manageOpen && (
+            <div className="mt-3 space-y-3 rounded-xl border border-border bg-secondary/40 p-3">
+              <div>
+                <p className="text-[11px] font-semibold">
+                  What CALISTIFY can access
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <AccessChip label="Steps" granted={readGranted} />
+                  <AccessChip
+                    label="Calories"
+                    granted={(access?.readAuthorized ?? []).includes(
+                      "calories",
+                    )}
+                  />
+                  <AccessChip
+                    label="Read workouts"
+                    granted={(access?.readAuthorized ?? []).includes(
+                      "workouts",
+                    )}
+                  />
+                  <AccessChip label="Save workouts" granted={writeGranted} />
+                </div>
+                {!writeGranted && (
+                  <p className="mt-2 text-[10px] leading-4 text-destructive">
+                    Saving workouts is turned off — your workouts won't be
+                    written to {copy.name} until you allow it.
+                  </p>
+                )}
+              </div>
+
+              {platform === "android" ? (
+                <Button
+                  variant="secondary"
+                  className="h-9 w-full rounded-xl text-[12px] font-semibold"
+                  disabled={busy}
+                  onClick={() => void openSettings()}
+                >
+                  Open Health Connect settings
+                </Button>
+              ) : (
+                <p className="text-[10px] leading-4 text-muted-foreground">
+                  To change access later: Health → Profile → Apps → CALISTIFY on
+                  your iPhone.
+                </p>
+              )}
+
+              <Button
+                variant="outline"
+                className="h-9 w-full rounded-xl border-border text-[12px] font-semibold"
+                disabled={busy}
+                onClick={() => void recheck()}
+              >
+                {busy ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-1.5 size-3.5" />
+                )}
+                Recheck access
+              </Button>
+            </div>
+          )}
+
+          {status && <StatusLine status={status} />}
         </div>
       </div>
     );
   }
 
-  /* ── step 2: choose the device ── */
+  /* ── native app, not connected: the real Connect card ── */
   return (
     <div>
-      <SectionLabel>Health Connection</SectionLabel>
+      <SectionLabel>Health Integration</SectionLabel>
       <div className="rounded-2xl border border-border bg-card p-5">
-        <p className="text-[16px] font-bold">Choose your device</p>
-        <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-          We'll set up the right connection for it.
-        </p>
-
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          {(
-            [
-              {
-                id: "ios",
-                icon: Apple,
-                title: "iPhone",
-                sub: "Fitness & Health",
-              },
-              {
-                id: "android",
-                icon: Smartphone,
-                title: "Android",
-                sub: "Health Connect",
-              },
-            ] as const
-          ).map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setPlatform(opt.id)}
-              className={cn(
-                "flex flex-col items-center gap-1.5 rounded-2xl border-2 p-4 transition-colors",
-                platform === opt.id
-                  ? "border-primary bg-primary/10"
-                  : "border-border bg-secondary/40 hover:border-primary/30",
-              )}
-            >
-              <opt.icon
-                className={cn(
-                  "size-7",
-                  platform === opt.id
-                    ? "text-primary"
-                    : "text-muted-foreground",
-                )}
-              />
-              <span className="text-[13px] font-bold">{opt.title}</span>
-              <span className="text-[10px] text-muted-foreground">
-                {opt.sub}
-              </span>
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+            <PlatformIcon className="size-6 text-primary" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[16px] font-bold">{copy.name}</p>
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              {copy.tagline}
+            </p>
+          </div>
         </div>
 
         <Button
@@ -572,15 +526,15 @@ export function HealthConnect() {
           ) : (
             <Link2 className="mr-2 size-4" />
           )}
-          Accept & Connect
+          Connect
         </Button>
-        <button
-          type="button"
-          onClick={() => setStage("consent")}
-          className="mt-2 w-full text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Back to terms
-        </button>
+
+        <p className="mt-3 text-[10px] leading-4 text-muted-foreground">
+          You'll see the real{" "}
+          {platform === "ios" ? "Apple Health" : "Health Connect"} permission
+          screen and choose exactly what CALISTIFY can access. Only steps,
+          calories and workouts are requested.
+        </p>
 
         {status && <StatusLine status={status} />}
       </div>
