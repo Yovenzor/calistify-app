@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useAthlete } from "@/hooks/use-athlete";
 import { useSession, type SessionExercise } from "@/lib/session";
 import { formatRelativeDay, formatDuration } from "@/lib/format";
-import { EXERCISES, getExercise } from "@/lib/exercises";
+import { EXERCISES, getExercise, matchesExercise } from "@/lib/exercises";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -48,19 +48,10 @@ export default function NewWorkout() {
 
   const recentWorkouts = workouts.slice(0, 6);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return EXERCISES;
-    return EXERCISES.filter(
-      (e) =>
-        e.name.toLowerCase().includes(q) ||
-        e.category.toLowerCase().includes(q) ||
-        e.difficulty.toLowerCase().includes(q) ||
-        e.equipment.toLowerCase().includes(q) ||
-        e.primary.some((m) => m.toLowerCase().includes(q)) ||
-        e.secondary.some((m) => m.toLowerCase().includes(q)),
-    );
-  }, [query]);
+  const filtered = useMemo(
+    () => EXERCISES.filter((e) => matchesExercise(e, query)),
+    [query],
+  );
 
   const handleStart = () => {
     const exercises: SessionExercise[] = exerciseIds.map((id) => ({

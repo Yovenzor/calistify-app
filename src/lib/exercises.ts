@@ -571,3 +571,28 @@ export const DIFFICULTY_FILTERS = [
   "Advanced",
   "Elite",
 ] as const;
+
+/**
+ * Lowercase and strip every separator so typed searches match the catalog:
+ * "pull up", "pull-up" and "pullup" all hit "Pull-Up", and "front delts"
+ * hits the "front_delts" muscle key.
+ */
+const normalizeForSearch = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+/** Case- and separator-insensitive match across every searchable field. */
+export function matchesExercise(exercise: Exercise, query: string): boolean {
+  const q = normalizeForSearch(query);
+  if (!q) return true;
+  const haystack = normalizeForSearch(
+    [
+      exercise.name,
+      exercise.category,
+      exercise.difficulty,
+      exercise.equipment,
+      ...exercise.primary,
+      ...exercise.secondary,
+    ].join(" "),
+  );
+  return haystack.includes(q);
+}

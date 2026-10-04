@@ -2,7 +2,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAthlete } from "@/hooks/use-athlete";
-import { EXERCISES, getExercise } from "@/lib/exercises";
+import { EXERCISES, getExercise, matchesExercise } from "@/lib/exercises";
 import { formatClock, formatRestClock, formatVolume } from "@/lib/format";
 import { useSession, type SessionExercise } from "@/lib/session";
 import { computeWorkoutStats } from "@/lib/stats";
@@ -607,16 +607,7 @@ function ExercisePicker({
   onClose: () => void;
 }) {
   const session = useSession();
-  const q = query.trim().toLowerCase();
-  const list = q
-    ? EXERCISES.filter(
-        (e) =>
-          e.name.toLowerCase().includes(q) ||
-          e.category.toLowerCase().includes(q) ||
-          e.equipment.toLowerCase().includes(q) ||
-          e.primary.some((m) => m.includes(q)),
-      )
-    : EXERCISES;
+  const list = EXERCISES.filter((e) => matchesExercise(e, query));
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center">

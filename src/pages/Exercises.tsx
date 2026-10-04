@@ -1,5 +1,10 @@
 import { DifficultyBadge, EmptyState } from "@/components/AppUI";
-import { EXERCISES, CATEGORY_FILTERS, DIFFICULTY_FILTERS } from "@/lib/exercises";
+import {
+  EXERCISES,
+  CATEGORY_FILTERS,
+  DIFFICULTY_FILTERS,
+  matchesExercise,
+} from "@/lib/exercises";
 import { cn } from "@/lib/utils";
 import { ArrowRight, Search } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -12,18 +17,10 @@ export default function Exercises() {
   const [difficulty, setDifficulty] = useState<string>("All");
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     return EXERCISES.filter((e) => {
       if (category !== "All" && e.category !== category) return false;
       if (difficulty !== "All" && e.difficulty !== difficulty) return false;
-      if (!q) return true;
-      return (
-        e.name.toLowerCase().includes(q) ||
-        e.category.toLowerCase().includes(q) ||
-        e.equipment.toLowerCase().includes(q) ||
-        e.primary.some((m) => m.replace("_", " ").includes(q)) ||
-        e.secondary.some((m) => m.replace("_", " ").includes(q))
-      );
+      return matchesExercise(e, query);
     });
   }, [query, category, difficulty]);
 
@@ -104,7 +101,9 @@ export default function Exercises() {
               className="group flex flex-col rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 active:scale-[0.99]"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-[14px] leading-snug font-semibold">{ex.name}</p>
+                <p className="text-[14px] leading-snug font-semibold">
+                  {ex.name}
+                </p>
                 <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
               <div className="mt-2">
@@ -112,7 +111,11 @@ export default function Exercises() {
               </div>
               <p className="mt-2.5 text-[11px] leading-4 text-muted-foreground">
                 {ex.primary
-                  .map((m) => m.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()))
+                  .map((m) =>
+                    m
+                      .replace("_", " ")
+                      .replace(/\b\w/g, (c) => c.toUpperCase()),
+                  )
                   .join(" · ")}
               </p>
               <p className="mt-1 text-[10px] text-muted-foreground/60">
