@@ -110,7 +110,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         width={399}
         height={169}
         className="block h-8 w-auto self-start cursor-pointer select-none"
-        onClick={() => navigate("/")}
+        onClick={() => navigate("/app")}
       />
 
       <div className="flex flex-1 flex-col justify-center py-10">
