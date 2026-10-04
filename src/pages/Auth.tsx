@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/input-otp";
 
 import { useAuth } from "@/hooks/use-auth";
-import logo from "@/assets/logo.svg";
 import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -121,11 +120,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               <CardHeader className="text-center">
               <div className="flex justify-center">
                     <img
-                      src={logo}
+                      src="/assets/logo-transparent.png"
                       alt="Calistify"
-                      width={56}
-                      height={56}
-                      className="rounded-lg mb-4 mt-4 cursor-pointer"
+                      width={399}
+                      height={169}
+                      className="mb-4 mt-4 block h-14 w-auto cursor-pointer select-none"
                       onClick={() => navigate("/")}
                     />
                   </div>

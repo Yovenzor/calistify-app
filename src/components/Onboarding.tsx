@@ -1,5 +1,4 @@
 import { api } from "@/convex/_generated/api";
-import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
@@ -48,7 +47,13 @@ export function Onboarding() {
 
   return (
     <div className="fade-in relative flex min-h-dvh flex-col bg-background px-6 pt-8 pb-10">
-      <Logo size="md" />
+      <img
+        src="/assets/logo-transparent.png"
+        alt="Calistify"
+        width={399}
+        height={169}
+        className="block h-8 w-auto select-none"
+      />
 
       <div className="flex flex-1 flex-col justify-center py-10">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-primary uppercase">
