@@ -1,5 +1,4 @@
 import { BottomNav } from "@/components/BottomNav";
-import { Logo } from "@/components/Logo";
 import { Onboarding } from "@/components/Onboarding";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAthlete } from "@/hooks/use-athlete";
@@ -50,7 +49,13 @@ export function AppShell() {
       {!isActiveWorkoutRoute && (
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/70 bg-background/85 px-5 py-3.5 backdrop-blur-xl">
           <Link to="/app" aria-label="Calistify home">
-            <Logo size="sm" />
+            <img
+              src="/assets/logo-transparent.png"
+              alt="Calistify"
+              width={399}
+              height={169}
+              className="block h-7 w-auto select-none"
+            />
           </Link>
           <div className="flex items-center gap-3">
             <Link
