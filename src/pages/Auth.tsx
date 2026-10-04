@@ -120,10 +120,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               Welcome back
             </p>
             <h1 className="mt-4 text-[34px] leading-[1.08] font-bold tracking-tight">
-              Sign in to <span className="text-primary">Calistify</span>
+              Train Smarter.
+              <br />
+              Build <span className="text-primary">Stronger.</span>
             </h1>
-            <p className="mt-4 max-w-[300px] text-[15px] leading-6 text-muted-foreground">
-              Enter your email to log in or sign up — or keep going as a guest.
+            <p className="mt-4 max-w-[320px] text-[15px] leading-6 text-muted-foreground">
+              Sign in to pick up where you left off — or keep going as a guest.
             </p>
 
             <form onSubmit={handleEmailSubmit} className="mt-9">
