@@ -52,7 +52,7 @@ export function Onboarding() {
         alt="Calistify"
         width={399}
         height={169}
-        className="block h-8 w-auto select-none"
+        className="block h-8 w-auto self-start select-none"
       />
 
       <div className="flex flex-1 flex-col justify-center py-10">
@@ -80,7 +80,7 @@ export function Onboarding() {
             id="athlete-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={suggested || "e.g. Yovenzor"}
+            placeholder="Your Name"
             className="mt-3 h-12 border-border bg-[#0d0d0d] text-base focus-visible:ring-primary/30"
             autoFocus
             maxLength={40}
