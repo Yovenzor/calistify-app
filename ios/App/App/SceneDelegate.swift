@@ -8,8 +8,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        // MainViewController registers CALISTIFY's local health plugin with the bridge.
-        window?.rootViewController = MainViewController()
+        window?.rootViewController = CAPBridgeViewController()
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)

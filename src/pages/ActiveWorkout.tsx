@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { useAthlete } from "@/hooks/use-athlete";
 import { EXERCISES, getExercise } from "@/lib/exercises";
 import { formatClock, formatRestClock, formatVolume } from "@/lib/format";
-import { writeWorkoutToHealth } from "@/lib/healthNative";
 import { useSession, type SessionExercise } from "@/lib/session";
 import { computeWorkoutStats } from "@/lib/stats";
 import { cn } from "@/lib/utils";
@@ -140,13 +139,6 @@ export default function ActiveWorkout() {
         setFinishing(false);
         return;
       }
-      // Fire-and-forget: also save the finished workout to Apple Health /
-      // Health Connect when the native integration is connected.
-      void writeWorkoutToHealth({
-        startedAt: workout.startedAt,
-        endedAt: workout.startedAt + elapsedMs,
-        title: workout.name,
-      });
       setDone({
         workoutId: result.workoutId,
         stats: result.stats,

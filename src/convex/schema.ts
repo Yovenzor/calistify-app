@@ -142,43 +142,6 @@ const schema = defineSchema(
       exerciseIds: v.array(v.string()),
       createdAt: v.number(),
     }).index("by_user", ["userId"]),
-
-    /* Daily health metrics imported from the user's own health app export
-       (Apple Health export.xml). Only aggregated day totals are stored —
-       the raw export file never leaves the device. */
-    healthDaily: defineTable({
-      userId: v.id("users"),
-      date: v.string(), // YYYY-MM-DD (user's local day)
-      steps: v.optional(v.number()),
-      activeKcal: v.optional(v.number()),
-      basalKcal: v.optional(v.number()),
-      exerciseMin: v.optional(v.number()),
-      sleepMin: v.optional(v.number()),
-      restingHr: v.optional(v.number()),
-      source: v.string(), // "apple_health" | "health_connect" | "shortcuts"
-      importedAt: v.number(),
-    }).index("by_user_date", ["userId", "date"]),
-
-    /* Health connection: consent record, private sync endpoint token and the
-       rolling dedup ledger for webhook deliveries (Health Connect bridge /
-       iOS Shortcuts). Deleted together with health data on disconnect. */
-    healthSync: defineTable({
-      userId: v.id("users"),
-      token: v.string(), // secret in the personal sync URL
-      platform: v.union(v.literal("ios"), v.literal("android")),
-      tzOffsetMin: v.number(), // device UTC offset, for local-day bucketing
-      consentedAt: v.number(),
-      createdAt: v.number(),
-      lastSyncAt: v.optional(v.number()),
-      lastSource: v.optional(v.string()),
-      // interval ledgers keyed by record time → value (dedup on re-delivery)
-      ledgerSteps: v.optional(v.record(v.string(), v.number())),
-      ledgerActive: v.optional(v.record(v.string(), v.number())),
-      ledgerTotal: v.optional(v.record(v.string(), v.number())),
-      ledgerSleep: v.optional(v.record(v.string(), v.number())),
-    })
-      .index("by_user", ["userId"])
-      .index("by_token", ["token"]),
   },
   {
     schemaValidation: false,

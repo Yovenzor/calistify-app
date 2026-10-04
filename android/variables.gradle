@@ -1,7 +1,5 @@
 ext {
-    // Health Connect requires Android 8.0 (API 26)+ — the health plugin's
-    // Gradle setup declares minSdk 26, so the app module must match it.
-    minSdkVersion = 26
+    minSdkVersion = 24
     compileSdkVersion = 36
     targetSdkVersion = 36
     androidxActivityVersion = '1.11.0'

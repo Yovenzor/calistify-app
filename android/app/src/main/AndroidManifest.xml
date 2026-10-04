@@ -38,9 +38,4 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- Health Connect: save the workouts CALISTIFY's user finishes.
-         Read permissions (steps, active calories, exercise) are declared by
-         the health plugin and merged in from its manifest. -->
-    <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
 </manifest>

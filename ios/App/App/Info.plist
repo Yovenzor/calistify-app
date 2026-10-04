@@ -22,10 +22,6 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>CALISTIFY reads your steps, active energy and workouts to show your activity alongside your training.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>CALISTIFY saves the workouts you finish to Apple Health so your training history stays in one place.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

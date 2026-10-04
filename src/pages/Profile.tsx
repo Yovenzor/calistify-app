@@ -1,6 +1,5 @@
 import { api } from "@/convex/_generated/api";
 import { SectionLabel } from "@/components/AppUI";
-import { HealthConnect } from "@/components/HealthConnect";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -249,9 +248,6 @@ export default function Profile() {
           />
         </div>
       </div>
-
-      {/* Health connection — Apple Health import */}
-      <HealthConnect />
 
       {/* Links */}
       <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border bg-card">
