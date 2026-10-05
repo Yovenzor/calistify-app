@@ -1,5 +1,6 @@
 import { EmptyState, SectionLabel, StatCard } from "@/components/AppUI";
 import { api } from "@/convex/_generated/api";
+import { MonthlyRecap } from "@/components/MonthlyRecap";
 import { ProgressChart } from "@/components/ProgressChart";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { Button } from "@/components/ui/button";
@@ -108,6 +109,9 @@ export default function Dashboard() {
         </p>
       </section>
 
+      {/* Monthly recap — first thing on home, above today's workout */}
+      <MonthlyRecap unit={unit} />
+
       {/* Today's workout */}
       <section>
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -126,7 +130,9 @@ export default function Dashboard() {
                     {plannedWorkout.name}
                   </p>
                   <span className="shrink-0 text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
-                    {plannedWorkout.kind === "template" ? "Template" : "Last session"}
+                    {plannedWorkout.kind === "template"
+                      ? "Template"
+                      : "Last session"}
                   </span>
                 </div>
                 <p className="mt-1 text-[13px] text-muted-foreground">
@@ -238,7 +244,11 @@ export default function Dashboard() {
               return (
                 <Link
                   key={day.key}
-                  to={active ? `/app/workouts/${day.workouts[0]._id}` : "/app/workout/new"}
+                  to={
+                    active
+                      ? `/app/workouts/${day.workouts[0]._id}`
+                      : "/app/workout/new"
+                  }
                   className={cn(
                     "flex flex-col items-center gap-2 rounded-xl py-2.5 transition-colors",
                     active

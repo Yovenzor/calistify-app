@@ -76,8 +76,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   }, [authLoading, isAuthenticated, navigate, redirect]);
 
   const currentEmailValue = () =>
-    (document.getElementById("auth-email") as HTMLInputElement | null)?.value.trim() ??
-    "";
+    (
+      document.getElementById("auth-email") as HTMLInputElement | null
+    )?.value.trim() ?? "";
 
   const switchTo = (next: Step) => {
     setError(null);
@@ -160,7 +161,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     } catch (error) {
       console.error("Email sign-in error:", error);
       setError(
-        messageOf(error) || "Failed to send verification code. Please try again.",
+        messageOf(error) ||
+          "Failed to send verification code. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -168,9 +170,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   /** One-time code path — step 2: verify the code (existing behavior). */
-  const handleOtpSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const handleOtpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -188,9 +188,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   /** Google Authenticator code for a two-factor account. */
-  const handleTotpSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const handleTotpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (step.kind !== "totp" || totp.length !== 6) return;
     setIsLoading(true);
@@ -261,9 +259,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   /** Forgot password — verify the code and choose a new password. */
-  const handleResetSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const handleResetSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (step.kind !== "reset" || resetCode.length !== 6) return;
     const formData = new FormData(event.currentTarget);
@@ -281,7 +277,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     } catch (error) {
       console.error("Password reset error:", error);
       const msg = messageOf(error);
-      if (msg.includes("Could not verify code") || msg.includes("Invalid code")) {
+      if (
+        msg.includes("Could not verify code") ||
+        msg.includes("Invalid code")
+      ) {
         setError("That reset code is incorrect or has expired.");
         setResetCode("");
       } else if (msg.includes("Invalid password")) {
@@ -346,8 +345,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     </div>
   );
 
-  const isUp =
-    step.kind === "signIn" && method === "password" && mode === "up";
+  const isUp = step.kind === "signIn" && method === "password" && mode === "up";
 
   return (
     <div className="fade-in mx-auto flex min-h-dvh w-full max-w-[440px] flex-col border-x border-border/70 bg-background px-6 pt-8 pb-10">

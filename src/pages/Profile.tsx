@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { SectionLabel } from "@/components/AppUI";
+import { PhotoEditor } from "@/components/PhotoEditor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ export default function Profile() {
 
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<{
@@ -93,7 +95,7 @@ export default function Profile() {
     }
   };
 
-  const onPhoto = async (file: File) => {
+  const onPhoto = async (file: Blob) => {
     setBusy(true);
     try {
       const url = await uploadUrl();
@@ -163,7 +165,7 @@ export default function Profile() {
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) void onPhoto(f);
+              if (f) setCropFile(f);
               e.target.value = "";
             }}
           />
@@ -403,6 +405,17 @@ export default function Profile() {
           </div>,
           document.body,
         )}
+
+      {cropFile && (
+        <PhotoEditor
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onDone={async (blob) => {
+            setCropFile(null);
+            await onPhoto(blob);
+          }}
+        />
+      )}
     </div>
   );
 }

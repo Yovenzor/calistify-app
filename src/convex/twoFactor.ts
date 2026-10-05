@@ -63,9 +63,7 @@ function generateSecret(): string {
 
 /** otpauth:// URL that Google Authenticator (and every other app) scans. */
 function otpauthUrl(email: string, secret: string): string {
-  const label = encodeURIComponent(
-    `CALISTIFY${email ? `:${email}` : ""}`,
-  );
+  const label = encodeURIComponent(`CALISTIFY${email ? `:${email}` : ""}`);
   return `otpauth://totp/${label}?secret=${secret}&issuer=CALISTIFY&algorithm=SHA1&digits=${DIGITS}&period=${PERIOD_SECONDS}`;
 }
 

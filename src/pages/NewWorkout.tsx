@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
 import {
   useEffect,
   useMemo,
@@ -54,12 +55,41 @@ export default function NewWorkout() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [repeatId, setRepeatId] = useState<string | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const repeatDetail = useQuery(
     api.workouts.get,
     repeatId ? { id: repeatId as never } : "skip",
   );
 
   const recentWorkouts = workouts.slice(0, 6);
+
+  // Save-as-template feedback: the button flips to a popped "saved" state
+  // until the workout changes, so repeat clicks can't create duplicates.
+  const templateSignature = `${name.trim()}|${exerciseIds.join(",")}`;
+  const templateSaved =
+    savedSignature !== null && savedSignature === templateSignature;
+
+  const handleSaveTemplate = async () => {
+    if (savingTemplate || templateSaved || exerciseIds.length === 0) return;
+    const signature = templateSignature;
+    setSavingTemplate(true);
+    try {
+      await createTemplate({
+        name: name || "Template",
+        exerciseIds,
+      });
+      setSavedSignature(signature);
+      toast.success("Template saved", {
+        description: "Open the Template tab to start the same session anytime.",
+      });
+    } catch (error) {
+      console.error("Saving template failed:", error);
+      toast.error("Couldn't save the template — try again.");
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
 
   const filtered = useMemo(
     () => EXERCISES.filter((e) => matchesExercise(e, query)),
@@ -317,19 +347,30 @@ export default function NewWorkout() {
 
       <Button
         variant="ghost"
-        className="w-full text-muted-foreground"
-        disabled={exerciseIds.length === 0}
-        onClick={async () => {
-          await createTemplate({
-            name: name || "Template",
-            exerciseIds,
-          });
-        }}
+        className={cn(
+          "w-full transition-colors",
+          templateSaved ? "text-primary" : "text-muted-foreground",
+        )}
+        disabled={exerciseIds.length === 0 || savingTemplate}
+        onClick={handleSaveTemplate}
       >
-        <Save className="size-4" />
-        {exerciseIds.length > 0
-          ? "Save as template"
-          : "Add exercises to save a template"}
+        <span
+          key={templateSaved ? "saved" : "idle"}
+          className={cn("flex items-center", templateSaved && "pop-in")}
+        >
+          {templateSaved ? (
+            <Check className="size-4" />
+          ) : (
+            <Save className="size-4" />
+          )}
+          {templateSaved
+            ? "Template saved"
+            : exerciseIds.length > 0
+              ? savingTemplate
+                ? "Saving…"
+                : "Save as template"
+              : "Add exercises to save a template"}
+        </span>
       </Button>
 
       {/* Exercise picker sheet */}

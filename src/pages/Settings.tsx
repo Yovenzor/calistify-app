@@ -69,9 +69,10 @@ export default function Settings() {
   const [confirm, setConfirm] = useState<null | ConfirmKind>(null);
   const [busy, setBusy] = useState(false);
 
-  const [pending, setPending] = useState<null | { secret: string; url: string }>(
-    null,
-  );
+  const [pending, setPending] = useState<null | {
+    secret: string;
+    url: string;
+  }>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [offCode, setOffCode] = useState("");
@@ -324,9 +325,7 @@ export default function Settings() {
                 )}
               />
               <div>
-                <p className="text-[13px] font-medium">
-                  Google Authenticator
-                </p>
+                <p className="text-[13px] font-medium">Google Authenticator</p>
                 <p className="text-[10px] text-muted-foreground">
                   {twoFa?.enabled
                     ? "On — password sign-ins now need a 6-digit app code."
@@ -357,13 +356,13 @@ export default function Settings() {
             <div className="border-t border-border/70 px-4 py-4">
               <ol className="space-y-1 text-[11px] leading-4 text-muted-foreground">
                 <li>
-                  <span className="font-semibold text-foreground">1.</span>{" "}
-                  Open Google Authenticator and scan this QR code
-                  (or enter the key below).
+                  <span className="font-semibold text-foreground">1.</span> Open
+                  Google Authenticator and scan this QR code (or enter the key
+                  below).
                 </li>
                 <li>
-                  <span className="font-semibold text-foreground">2.</span>{" "}
-                  Type the 6-digit code it shows to confirm.
+                  <span className="font-semibold text-foreground">2.</span> Type
+                  the 6-digit code it shows to confirm.
                 </li>
               </ol>
 
@@ -446,9 +445,7 @@ export default function Settings() {
                 </p>
               )}
               {twoFaNotice && (
-                <p className="mt-2 text-[11px] text-primary">
-                  {twoFaNotice}
-                </p>
+                <p className="mt-2 text-[11px] text-primary">{twoFaNotice}</p>
               )}
 
               <Button

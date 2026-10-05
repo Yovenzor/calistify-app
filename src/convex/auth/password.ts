@@ -14,8 +14,9 @@ const base = Password({ reset: emailOtp });
 
 // `options` exists at runtime (Convex Credentials providers always carry it)
 // even though ConvexCredentialsConfig's type doesn't declare it.
-const baseOptions = (base as unknown as { options: ConvexCredentialsUserConfig })
-  .options;
+const baseOptions = (
+  base as unknown as { options: ConvexCredentialsUserConfig }
+).options;
 
 type Credentials = Partial<Record<string, Value | undefined>>;
 type AuthCtx = GenericActionCtxWithAuthConfig<GenericDataModel>;
@@ -33,19 +34,42 @@ type AuthCtx = GenericActionCtxWithAuthConfig<GenericDataModel>;
  * - Sign-up and password-reset flows are untouched: reset stays guarded by
  *   the emailed 6-digit code (the project's existing email sender).
  */
+/**
+ * Map the stock provider's internal error strings to user-facing messages.
+ * Unknown email and wrong password become the same message on purpose —
+ * no account enumeration, no hint that 2FA is on.
+ */
+function normalizeCredentialsError(error: unknown): Error {
+  const msg = error instanceof Error ? error.message : "";
+  if (msg === "InvalidAccountId" || msg === "InvalidSecret") {
+    return new Error("Invalid credentials");
+  }
+  if (msg === "TooManyFailedAttempts") {
+    return new Error("Too many attempts — wait a minute and try again.");
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 async function authorizeWithTotp(credentials: Credentials, ctx: AuthCtx) {
   if (credentials.flow === "signIn") {
     const email = credentials.email;
     const secret = credentials.password;
     if (typeof email === "string" && typeof secret === "string") {
-      const retrieved = await retrieveAccount(ctx, {
-        provider: "password",
-        account: { id: email, secret },
-      });
-      const user = retrieved === null ? null : retrieved.user;
+      // Verify the password first (also the only step a wrong password can
+      // reach, so failed attempts count once against the rate limit), then
+      // require a live authenticator code when two-factor is enabled.
+      let user;
+      try {
+        const retrieved = await retrieveAccount(ctx, {
+          provider: "password",
+          account: { id: email, secret },
+        });
+        user = retrieved.user;
+      } catch (error) {
+        throw normalizeCredentialsError(error);
+      }
       if (
-        user &&
-        user.totpEnabled === true &&
+        user?.totpEnabled === true &&
         typeof user.totpSecret === "string" &&
         user.totpSecret.length >= 16
       ) {
@@ -57,7 +81,11 @@ async function authorizeWithTotp(credentials: Credentials, ctx: AuthCtx) {
       }
     }
   }
-  return await baseOptions.authorize(credentials, ctx);
+  try {
+    return await baseOptions.authorize(credentials, ctx);
+  } catch (error) {
+    throw normalizeCredentialsError(error);
+  }
 }
 
 export const password = {

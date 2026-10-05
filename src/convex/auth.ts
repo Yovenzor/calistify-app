@@ -5,7 +5,6 @@ import { Anonymous } from "@convex-dev/auth/providers/Anonymous";
 import { emailOtp } from "./auth/emailOtp";
 import { password } from "./auth/password";
 
-
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   // "password": email + password sign-in/sign-up/reset with an optional
   // Google Authenticator second factor (see ./auth/password.ts).

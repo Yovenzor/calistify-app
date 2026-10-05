@@ -1,6 +1,7 @@
 import { DifficultyBadge, EmptyState } from "@/components/AppUI";
 import {
   EXERCISES,
+  EXERCISE_MEDIA,
   CATEGORY_FILTERS,
   DIFFICULTY_FILTERS,
   matchesExercise,
@@ -94,36 +95,64 @@ export default function Exercises() {
         />
       ) : (
         <div className="grid gap-3 min-[380px]:grid-cols-2">
-          {filtered.map((ex) => (
-            <Link
-              key={ex.id}
-              to={`/app/exercises/${ex.id}`}
-              className="group flex flex-col rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 active:scale-[0.99]"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[14px] leading-snug font-semibold">
-                  {ex.name}
+          {filtered.map((ex) => {
+            const src = EXERCISE_MEDIA[ex.id];
+            return (
+              <Link
+                key={ex.id}
+                to={`/app/exercises/${ex.id}`}
+                className="group flex flex-col rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 active:scale-[0.99]"
+              >
+                {src && (
+                  <div className="-mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl border-b border-border/60 bg-secondary">
+                    <img
+                      src={src}
+                      alt={ex.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="aspect-square w-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[14px] leading-snug font-semibold">
+                    {ex.name}
+                  </p>
+                  <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                </div>
+                <div className="mt-2">
+                  <DifficultyBadge level={ex.difficulty} />
+                </div>
+                <p className="mt-2.5 text-[11px] leading-4 text-muted-foreground">
+                  {ex.primary
+                    .map((m) =>
+                      m
+                        .replace("_", " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase()),
+                    )
+                    .join(" · ")}
                 </p>
-                <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-              </div>
-              <div className="mt-2">
-                <DifficultyBadge level={ex.difficulty} />
-              </div>
-              <p className="mt-2.5 text-[11px] leading-4 text-muted-foreground">
-                {ex.primary
-                  .map((m) =>
-                    m
-                      .replace("_", " ")
-                      .replace(/\b\w/g, (c) => c.toUpperCase()),
-                  )
-                  .join(" · ")}
-              </p>
-              <p className="mt-1 text-[10px] text-muted-foreground/60">
-                {ex.equipment}
-              </p>
-            </Link>
-          ))}
+                <p className="mt-1 text-[10px] text-muted-foreground/60">
+                  {ex.equipment}
+                </p>
+              </Link>
+            );
+          })}
         </div>
+      )}
+
+      {filtered.length > 0 && (
+        <p className="pt-1 text-center text-[10px] leading-4 text-muted-foreground/60">
+          Exercise animations ©{" "}
+          <a
+            href="https://www.gymvisual.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline transition-colors hover:text-muted-foreground"
+          >
+            Gym visual
+          </a>
+        </p>
       )}
     </div>
   );
