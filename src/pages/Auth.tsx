@@ -30,7 +30,13 @@ interface AuthProps {
 
 type Step =
   | { kind: "signIn" }
-  | { kind: "otp"; email: string }
+  | {
+      kind: "otp";
+      email: string;
+      /** Set for the password flow: the emailed code completes the sign-in. */
+      password?: string;
+      flow?: "signIn" | "signUp";
+    }
   | { kind: "totp"; email: string; password: string }
   | { kind: "forgot"; email: string }
   | { kind: "reset"; email: string };
@@ -95,7 +101,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setMode(next);
   };
 
-  /** Password path: sign up, or sign in (asking for TOTP first if enabled). */
+  /**
+   * Password path — step 1: verify the password (and the authenticator code
+   * when two-factor is on), have the server email a one-time code, and move
+   * to code entry. The session is only created after that code is verified.
+   */
   const handlePasswordSubmit = async (
     event: React.FormEvent<HTMLFormElement>,
   ) => {
@@ -107,8 +117,18 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       if (mode === "up") {
-        await signIn("password", { email, password, flow: "signUp" });
-        navigate(redirect);
+        const result = await signIn("password", {
+          email,
+          password,
+          flow: "signUp",
+        });
+        if (result.signingIn) {
+          navigate(redirect);
+          return;
+        }
+        // Password accepted and a code emailed — no session until it's
+        // entered.
+        setStep({ kind: "otp", email, password, flow: "signUp" });
         return;
       }
       const { required } = await convex.query(api.twoFactor.isTotpRequired, {
@@ -120,8 +140,17 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         setIsLoading(false);
         return;
       }
-      await signIn("password", { email, password, flow: "signIn" });
-      navigate(redirect);
+      const result = await signIn("password", {
+        email,
+        password,
+        flow: "signIn",
+      });
+      if (result.signingIn) {
+        navigate(redirect);
+        return;
+      }
+      // Password accepted and a code emailed — no session until it's entered.
+      setStep({ kind: "otp", email, password, flow: "signIn" });
     } catch (error) {
       console.error("Password sign-in error:", error);
       const msg = messageOf(error);
@@ -144,7 +173,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     }
   };
 
-  /** One-time code path — step 1: send the code (existing behavior). */
+  /** One-time code path — step 1: send the code (no password involved). */
   const handleEmailCodeSubmit = async (
     event: React.FormEvent<HTMLFormElement>,
   ) => {
@@ -169,38 +198,72 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     }
   };
 
-  /** One-time code path — step 2: verify the code (existing behavior). */
+  /** One-time code step: verify the emailed code to finish signing in. */
   const handleOtpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
     try {
-      const formData = new FormData(event.currentTarget);
-      await signIn("email-otp", formData);
+      const result =
+        step.kind === "otp" && step.password && step.flow
+          ? // Password flow — the emailed code completes sign-in/sign-up.
+            await signIn("password", {
+              flow: step.flow,
+              email: step.email,
+              password: step.password,
+              code: otp,
+            })
+          : await signIn("email-otp", new FormData(event.currentTarget));
+      if (!result.signingIn) {
+        setError("The verification code you entered is incorrect.");
+        setOtp("");
+        return;
+      }
       navigate(redirect);
     } catch (error) {
       console.error("OTP verification error:", error);
-      setError("The verification code you entered is incorrect.");
+      const msg = messageOf(error);
       setOtp("");
+      if (msg.includes("Invalid credentials")) {
+        backToSignIn();
+        setError("Wrong email or password. Please sign in again.");
+      } else if (
+        msg.includes("Invalid or expired code") ||
+        msg.includes("Could not verify code")
+      ) {
+        setError("The verification code you entered is incorrect.");
+      } else {
+        setError(msg || "The verification code you entered is incorrect.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  /** Google Authenticator code for a two-factor account. */
+  /** Google Authenticator code for a two-factor account, then the email code. */
   const handleTotpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (step.kind !== "totp" || totp.length !== 6) return;
     setIsLoading(true);
     setError(null);
     try {
-      await signIn("password", {
+      const result = await signIn("password", {
         email: step.email,
         password: step.password,
         flow: "signIn",
         totp,
       });
-      navigate(redirect);
+      if (result.signingIn) {
+        navigate(redirect);
+        return;
+      }
+      // Password + authenticator accepted — now the emailed one-time code.
+      setStep({
+        kind: "otp",
+        email: step.email,
+        password: step.password,
+        flow: "signIn",
+      });
     } catch (error) {
       console.error("Authenticator verification error:", error);
       const msg = messageOf(error);
@@ -462,11 +525,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                       )}
                     </button>
                   </div>
-                  {mode === "up" && (
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">
-                      Use at least 8 characters.
-                    </p>
-                  )}
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    {mode === "up" ? "Use at least 8 characters. " : ""}
+                    We&apos;ll email you a one-time code to finish.
+                  </p>
                 </div>
               )}
 
@@ -493,7 +555,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 {method === "password"
                   ? mode === "up"
                     ? "Create account"
-                    : "Sign in with password"
+                    : "Continue with password"
                   : "Email me a one-time code"}
               </Button>
             </form>
@@ -578,6 +640,14 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             </h1>
             <p className="mt-4 max-w-[320px] break-words text-[15px] leading-6 text-muted-foreground">
               We&apos;ve sent a 6-digit code to {step.email}.
+              {step.password && (
+                <>
+                  {" "}
+                  {step.flow === "signUp"
+                    ? "Enter it to finish creating your account."
+                    : "Enter it to finish signing in."}
+                </>
+              )}
             </p>
 
             <form onSubmit={handleOtpSubmit} className="mt-9">
@@ -644,8 +714,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               Enter your <span className="text-primary">code</span>
             </h1>
             <p className="mt-4 max-w-[330px] break-words text-[15px] leading-6 text-muted-foreground">
-              Open Google Authenticator and enter the 6-digit code for
-              CALISTIFY.
+              Open Google Authenticator and enter the 6-digit code for CALISTIFY
+              — then we&apos;ll email you a one-time code.
             </p>
 
             <form onSubmit={handleTotpSubmit} className="mt-9">

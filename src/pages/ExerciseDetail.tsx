@@ -1,7 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { DifficultyBadge, EmptyState, SectionLabel } from "@/components/AppUI";
 import { Button } from "@/components/ui/button";
-import { getExercise } from "@/lib/exercises";
+import { EXERCISE_MEDIA, getExercise } from "@/lib/exercises";
 import { MUSCLE_LABELS, type MuscleGroup } from "@/lib/muscles";
 import { useAthlete } from "@/hooks/use-athlete";
 import { formatFullDate, formatVolume } from "@/lib/format";
@@ -50,6 +50,7 @@ export default function ExerciseDetail() {
   }
 
   const stats = data?.stats ?? null;
+  const media = EXERCISE_MEDIA[def.id];
 
   return (
     <div className="space-y-5">
@@ -75,6 +76,32 @@ export default function ExerciseDetail() {
           </div>
         </div>
       </div>
+
+      {/* Animation */}
+      {media && (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <img
+            src={media}
+            alt={`Animation of ${def.name}`}
+            loading="lazy"
+            decoding="async"
+            className="aspect-square w-full bg-secondary object-contain"
+          />
+          {media.endsWith(".gif") && (
+            <p className="border-t border-border/60 px-4 py-2 text-center text-[10px] leading-4 text-muted-foreground/70">
+              Animation ©{" "}
+              <a
+                href="https://www.gymvisual.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline transition-colors hover:text-muted-foreground"
+              >
+                Gym visual
+              </a>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Muscles */}
       <div className="grid grid-cols-2 gap-3">

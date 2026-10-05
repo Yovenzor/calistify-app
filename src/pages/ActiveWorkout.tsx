@@ -44,6 +44,7 @@ export default function ActiveWorkout() {
   const finishMutation = useMutation(api.workouts.finish);
   const now = session.now;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [query, setQuery] = useState("");
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
@@ -199,18 +200,28 @@ export default function ActiveWorkout() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={session.pauseToggle}
-          className="flex size-9 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:border-primary/30"
-          aria-label={workout.paused ? "Resume" : "Pause"}
-        >
-          {workout.paused ? (
-            <Play className="size-4 text-primary" />
-          ) : (
-            <Pause className="size-4" />
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={session.pauseToggle}
+            className="flex size-9 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:border-primary/30"
+            aria-label={workout.paused ? "Resume" : "Pause"}
+          >
+            {workout.paused ? (
+              <Play className="size-4 text-primary" />
+            ) : (
+              <Pause className="size-4" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDiscard(true)}
+            className="flex size-9 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:border-destructive/40 hover:text-destructive"
+            aria-label="Discard workout"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </div>
       </div>
 
       {/* Summary strip */}
@@ -284,15 +295,8 @@ export default function ActiveWorkout() {
         )}
         <button
           type="button"
-          onClick={() => {
-            if (
-              window.confirm("Discard this workout? Logged sets will be lost.")
-            ) {
-              session.discardWorkout();
-              navigate("/app");
-            }
-          }}
-          className="w-full py-2 text-[12px] text-muted-foreground hover:text-destructive"
+          onClick={() => setConfirmDiscard(true)}
+          className="w-full py-2 text-[12px] text-muted-foreground transition-colors hover:text-destructive"
         >
           Discard workout
         </button>
@@ -303,6 +307,18 @@ export default function ActiveWorkout() {
           query={query}
           setQuery={setQuery}
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {confirmDiscard && (
+        <DiscardConfirmSheet
+          name={workout.name}
+          setCount={stats.setCount}
+          onCancel={() => setConfirmDiscard(false)}
+          onConfirm={() => {
+            session.discardWorkout();
+            navigate("/app");
+          }}
         />
       )}
 
@@ -687,6 +703,64 @@ function ExercisePicker({
 }
 
 /* ── Completion screen ─────────────────────────────────────────────────── */
+
+/* ── Discard confirmation sheet ───────────────────────────────────── */
+
+function DiscardConfirmSheet({
+  name,
+  setCount,
+  onCancel,
+  onConfirm,
+}: {
+  name: string;
+  setCount: number;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      <div className="rise-in relative w-full max-w-[440px] rounded-t-3xl border border-border bg-[#0a0a0a] px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <p className="text-[11px] font-semibold tracking-[0.18em] text-destructive uppercase">
+          Discard workout
+        </p>
+        <h2 className="mt-2 text-[22px] font-bold tracking-tight">
+          Throw this workout away?
+        </h2>
+        <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
+          <span className="font-medium text-foreground">{name}</span>
+          {setCount > 0
+            ? ` and ${setCount} logged ${setCount === 1 ? "set" : "sets"} will be lost.`
+            : " will be lost."}{" "}
+          This can&apos;t be undone.
+        </p>
+        <div className="mt-5 space-y-2">
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={onConfirm}
+            className="h-12 w-full rounded-xl text-[15px] font-semibold"
+          >
+            <Trash2 className="mr-2 size-4" />
+            Discard workout
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            className="h-12 w-full rounded-xl text-[15px] font-semibold"
+          >
+            Keep working out
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 function FinishScreen({
   data,

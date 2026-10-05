@@ -92,7 +92,7 @@ export default function Settings() {
       const dataUrl = await QRCode.toDataURL(res.url, {
         margin: 1,
         width: 256,
-        color: { dark: "#050505", light: "#B6FF00" },
+        color: { dark: "#050505", light: "#FFFFFF" },
       });
       setPending(res);
       setQrDataUrl(dataUrl);
