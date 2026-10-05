@@ -92,13 +92,16 @@ export default defineConfig({
     ],
   },
   // Performance hints
-  server: { allowedHosts: true,
+  server: {
+    allowedHosts: true,
     // Bind to all interfaces so the browser runtime's server-ready event fires.
     host: true,
     port: 5173,
-    // Keep HMR on, but disable full-screen error overlay
-    hmr: {
-      overlay: false,
-    },
+    // HMR must stay disabled: its websocket closes when the app is
+    // backgrounded, and Vite's client answers any close with a full
+    // `location.reload()` on return — that was the "app reloads every
+    // time I leave it" behavior. File edits are still picked up by the
+    // platform without HMR.
+    hmr: false,
   },
 });

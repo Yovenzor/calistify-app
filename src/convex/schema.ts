@@ -47,6 +47,12 @@ const schema = defineSchema(
       isAnonymous: v.optional(v.boolean()), // is the user anonymous. do not remove
 
       role: v.optional(roleValidator), // role of the user. do not remove
+
+      // Google Authenticator (TOTP) second factor for password sign-in.
+      // The secret is set during setup in Settings and only becomes
+      // active (`totpEnabled`) after the user proves it works.
+      totpSecret: v.optional(v.string()),
+      totpEnabled: v.optional(v.boolean()),
     }).index("email", ["email"]), // index for the email. do not remove or modify
 
     /* Athlete profile + settings. Starts empty — no fake data. */

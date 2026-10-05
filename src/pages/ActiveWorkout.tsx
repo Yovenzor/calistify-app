@@ -22,7 +22,14 @@ import {
   X,
 } from "lucide-react";
 import { useMutation } from "convex/react";
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 
@@ -356,8 +363,9 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
 
       <div className="divide-y divide-border/60">
         {ex.sets.map((set, i) => (
-          <div
+          <SwipeDeleteRow
             key={set.id}
+            onDelete={() => session.removeSet(ex.instanceId, set.id)}
             className={cn(
               "grid grid-cols-[22px_1fr_1fr_40px_44px] items-center gap-1.5 px-4 py-2.5 transition-colors",
               set.completed && "bg-primary/[0.06]",
@@ -428,7 +436,7 @@ function ExerciseCard({ ex }: { ex: SessionExercise }) {
               }}
               className="num h-8 w-full rounded-lg border border-border bg-[#0c0c0c] px-1 text-center text-[11px] font-medium outline-none transition-colors focus:border-primary/50"
             />
-          </div>
+          </SwipeDeleteRow>
         ))}
       </div>
 
@@ -894,4 +902,121 @@ function formatPRValue(
   }
   if (metric === "duration") return `${Math.round(value)}s`;
   return `${Math.round(value)} reps`;
+}
+
+const SWIPE_DELETE_OFFSET = 88;
+const SWIPE_DELETE_COMMIT = 44;
+
+/**
+ * Slide-to-delete row for in-workout set logging: dragging left past the
+ * threshold removes the set immediately — the slide IS the delete, with no
+ * intermediate "Delete" button to tap. Vertical scrolling and normal taps
+ * (inputs, complete button) keep working untouched.
+ */
+function SwipeDeleteRow({
+  onDelete,
+  className,
+  children,
+}: {
+  onDelete: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dxRef = useRef(0);
+  const originX = useRef(0);
+  const originY = useRef(0);
+  const baseX = useRef(0);
+  const active = useRef(false);
+  const moved = useRef(false);
+
+  const apply = (value: number) => {
+    dxRef.current = value;
+    setDx(value);
+  };
+
+  const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    active.current = true;
+    moved.current = false;
+    originX.current = e.clientX;
+    originY.current = e.clientY;
+    baseX.current = dxRef.current;
+  };
+
+  const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!active.current) return;
+    const delta = e.clientX - originX.current;
+    const vertical = e.clientY - originY.current;
+    if (!moved.current) {
+      if (Math.abs(vertical) > 8 && Math.abs(vertical) > Math.abs(delta)) {
+        active.current = false; // vertical scroll — hand it back to the page
+        return;
+      }
+      if (Math.abs(delta) < 8) return;
+      moved.current = true;
+      setDragging(true);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    const next = Math.min(
+      0,
+      Math.max(-SWIPE_DELETE_OFFSET, baseX.current + delta),
+    );
+    apply(next);
+    if (next <= -SWIPE_DELETE_COMMIT) {
+      // Past the point of no return: delete right now, mid-slide.
+      active.current = false;
+      moved.current = false;
+      setDragging(false);
+      onDelete();
+    }
+  };
+
+  const handlePointerEnd = () => {
+    if (!active.current) return;
+    active.current = false;
+    if (!moved.current) return;
+    setDragging(false);
+    apply(0); // slid back under the threshold — keep the set
+  };
+
+  const handleClickCapture = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (moved.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    moved.current = false;
+  };
+
+  // Destructive cue fades in as the row is dragged toward the commit point.
+  const reveal = Math.min(1, Math.max(0, -dx / SWIPE_DELETE_COMMIT));
+
+  return (
+    <div className="relative overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex items-center justify-end pr-4"
+        style={{ opacity: reveal }}
+      >
+        <div className="absolute inset-0 bg-destructive/15" />
+        <Trash2 className="relative size-4 text-destructive" />
+      </div>
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onClickCapture={handleClickCapture}
+        style={{
+          transform: `translateX(${dx}px)`,
+          transition: dragging ? "none" : "transform 0.2s ease",
+          touchAction: "pan-y",
+        }}
+        className={cn("relative", className)}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
