@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { EmptyState, SectionLabel } from "@/components/AppUI";
 import { ExercisePreview } from "@/components/ExercisePreview";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ export default function NewWorkout() {
   const { workouts } = useAthlete();
   const templates = useQuery(api.workouts.listTemplates);
   const createTemplate = useMutation(api.workouts.createTemplate);
+  const deleteTemplate = useMutation(api.workouts.deleteTemplate);
 
   const [mode, setMode] = useState<Mode>("empty");
   const [name, setName] = useState("");
@@ -57,6 +59,8 @@ export default function NewWorkout() {
   const [repeatId, setRepeatId] = useState<string | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] =
+    useState<Id<"templates"> | null>(null);
   const repeatDetail = useQuery(
     api.workouts.get,
     repeatId ? { id: repeatId as never } : "skip",
@@ -88,6 +92,27 @@ export default function NewWorkout() {
       toast.error("Couldn't save the template — try again.");
     } finally {
       setSavingTemplate(false);
+    }
+  };
+
+  // Delete a saved template with an inline confirm (window.confirm is
+  // blocked in the preview webview). Also clears the "saved" state if the
+  // draft matches the template that just got removed.
+  const handleDeleteTemplate = async (t: {
+    _id: Id<"templates">;
+    name: string;
+    exerciseIds: string[];
+  }) => {
+    try {
+      await deleteTemplate({ id: t._id });
+      if (savedSignature === `${t.name}|${t.exerciseIds.join(",")}`) {
+        setSavedSignature(null);
+      }
+      setConfirmDeleteId(null);
+      toast.success("Template deleted");
+    } catch (error) {
+      console.error("Deleting template failed:", error);
+      toast.error("Couldn't delete the template — try again.");
     }
   };
 
@@ -209,23 +234,64 @@ export default function NewWorkout() {
           <SectionLabel>Templates</SectionLabel>
           {templates && templates.length > 0 ? (
             <div className="space-y-2">
-              {templates.map((t) => (
-                <button
-                  key={t._id}
-                  type="button"
-                  onClick={() => {
-                    setName(t.name);
-                    setExerciseIds(t.exerciseIds);
-                    setMode("empty");
-                  }}
-                  className="flex w-full items-center justify-between rounded-xl border border-border bg-[#0c0c0c] px-4 py-3 text-left transition-colors hover:border-primary/30"
-                >
-                  <span className="text-sm font-medium">{t.name}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {t.exerciseIds.length} exercises
-                  </span>
-                </button>
-              ))}
+              {templates.map((t) =>
+                confirmDeleteId === t._id ? (
+                  <div
+                    key={t._id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3"
+                  >
+                    <span className="truncate text-sm font-medium">
+                      Delete “{t.name}”?
+                    </span>
+                    <div className="flex shrink-0 items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteTemplate(t)}
+                        className="rounded-lg bg-destructive px-3 py-1.5 text-[12px] font-semibold text-white transition-transform active:scale-95"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    key={t._id}
+                    className="flex w-full items-center rounded-xl border border-border bg-[#0c0c0c] pr-2 transition-colors hover:border-primary/30"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setName(t.name);
+                        setExerciseIds(t.exerciseIds);
+                        setMode("empty");
+                      }}
+                      className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 text-left"
+                    >
+                      <span className="truncate text-sm font-medium">
+                        {t.name}
+                      </span>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        {t.exerciseIds.length} exercises
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(t._id)}
+                      aria-label={`Delete ${t.name}`}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                ),
+              )}
             </div>
           ) : (
             <p className="text-[12px] text-muted-foreground">

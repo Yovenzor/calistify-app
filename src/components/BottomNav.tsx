@@ -10,45 +10,48 @@ const TABS = [
   { to: "/app/records", label: "Records", icon: Trophy, end: false },
 ] as const;
 
-/** Fixed bottom tab bar — the mobile replacement for the desktop sidebar. */
+/**
+ * Floating pill tab bar — the mobile replacement for the desktop sidebar.
+ * Every item renders icon-only; the active one expands to reveal its label
+ * while the others stay collapsed, with the width animating smoothly.
+ */
 export function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[440px] border-t border-border bg-[#080808]/95 backdrop-blur-xl">
-      <ul className="flex items-stretch justify-around px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <ul className="flex w-full max-w-[440px] items-center justify-between rounded-full border border-border/80 bg-[#0a0a0a]/95 p-1.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.9)] backdrop-blur-xl">
         {TABS.map(({ to, label, icon: Icon, end }) => (
-          <li key={to} className="flex-1">
+          <li key={to} className="flex">
             <NavLink
               to={to}
               end={end}
+              aria-label={label}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center gap-1 rounded-xl py-1.5 transition-colors duration-200",
+                  "flex h-11 items-center overflow-hidden rounded-full transition-all duration-300 ease-out",
                   isActive
-                    ? "text-primary"
+                    ? "bg-primary/15 text-primary"
                     : "text-muted-foreground hover:text-foreground",
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <span
-                    className={cn(
-                      "flex h-7 w-12 items-center justify-center rounded-full transition-all duration-200",
-                      isActive && "bg-primary/10",
-                    )}
-                  >
+                  <span className="flex w-11 shrink-0 items-center justify-center">
                     <Icon
                       className={cn(
-                        "size-[19px] transition-transform duration-200",
+                        "size-5 transition-transform duration-300 ease-out",
                         isActive && "scale-105",
                       )}
                       strokeWidth={isActive ? 2.2 : 1.7}
                     />
                   </span>
                   <span
+                    aria-hidden={!isActive}
                     className={cn(
-                      "text-[10px] font-medium tracking-tight transition-colors",
-                      isActive ? "text-primary" : "text-muted-foreground",
+                      "overflow-hidden whitespace-nowrap text-[12px] font-semibold leading-none transition-all duration-300 ease-out",
+                      isActive
+                        ? "max-w-[96px] pr-3.5 opacity-100"
+                        : "max-w-0 opacity-0",
                     )}
                   >
                     {label}

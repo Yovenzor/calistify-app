@@ -3,8 +3,8 @@ import { Loader2, ZoomIn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-/** Crop frame size in px (the avatar is rendered as a circle). */
-const FRAME = 272;
+/** Max crop frame size in px (the avatar is rendered as a circle). */
+const MAX_FRAME = 272;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 const EXPORT_SIZE = 512;
@@ -12,14 +12,19 @@ const EXPORT_SIZE = 512;
 type Offset = { x: number; y: number };
 
 /** Scale at which the image just covers the frame (zoom = 1). */
-function coverScale(img: HTMLImageElement) {
-  return Math.max(FRAME / img.naturalWidth, FRAME / img.naturalHeight);
+function coverScale(img: HTMLImageElement, frame: number) {
+  return Math.max(frame / img.naturalWidth, frame / img.naturalHeight);
 }
 
-function clampOffset(img: HTMLImageElement, off: Offset, zoom: number): Offset {
-  const eff = coverScale(img) * zoom;
-  const maxX = Math.max(0, (img.naturalWidth * eff - FRAME) / 2);
-  const maxY = Math.max(0, (img.naturalHeight * eff - FRAME) / 2);
+function clampOffset(
+  img: HTMLImageElement,
+  off: Offset,
+  zoom: number,
+  frame: number,
+): Offset {
+  const eff = coverScale(img, frame) * zoom;
+  const maxX = Math.max(0, (img.naturalWidth * eff - frame) / 2);
+  const maxY = Math.max(0, (img.naturalHeight * eff - frame) / 2);
   return {
     x: Math.min(maxX, Math.max(-maxX, off.x)),
     y: Math.min(maxY, Math.max(-maxY, off.y)),
@@ -49,6 +54,9 @@ export function PhotoEditor({
   const [zoom, setZoom] = useState(MIN_ZOOM);
   const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
+  // Actual circle diameter: capped at MAX_FRAME but shrinks on narrow
+  // screens so the frame and the photo inside it always fit the modal.
+  const [frameSize, setFrameSize] = useState(MAX_FRAME);
 
   // Derived from which file is currently loaded — selecting a new file
   // automatically hides stale image/error state.
@@ -90,6 +98,19 @@ export function PhotoEditor({
     };
   }, [file]);
 
+  // Keep the frame diameter in sync with its rendered size (the frame is
+  // CSS-sized: full width up to MAX_FRAME, square).
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      const w = el.clientWidth;
+      if (w > 0) setFrameSize((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   /** Zoom while keeping the focal point (screen coords, frame center = 0,0) fixed. */
   const applyZoom = (nextRaw: number, focal: Offset) => {
     if (!img) return;
@@ -104,6 +125,7 @@ export function PhotoEditor({
         y: focal.y - (focal.y - off.y) * ratio,
       },
       next,
+      frameSize,
     );
     zoomRef.current = next;
     offsetRef.current = nextOffset;
@@ -178,6 +200,7 @@ export function PhotoEditor({
           y: offsetRef.current.y + (current.y - prev.y),
         },
         zoomRef.current,
+        frameSize,
       );
       offsetRef.current = nextOffset;
       setOffset(nextOffset);
@@ -200,10 +223,10 @@ export function PhotoEditor({
     if (!img) return;
     setBusy(true);
     try {
-      const eff = coverScale(img) * zoom;
-      const size = FRAME / eff;
-      let sx = img.naturalWidth / 2 + (offset.x - FRAME / 2) / eff;
-      let sy = img.naturalHeight / 2 + (offset.y - FRAME / 2) / eff;
+      const eff = coverScale(img, frameSize) * zoom;
+      const size = frameSize / eff;
+      let sx = img.naturalWidth / 2 + (offset.x - frameSize / 2) / eff;
+      let sy = img.naturalHeight / 2 + (offset.y - frameSize / 2) / eff;
       sx = Math.max(0, Math.min(img.naturalWidth - size, sx));
       sy = Math.max(0, Math.min(img.naturalHeight - size, sy));
 
@@ -229,7 +252,7 @@ export function PhotoEditor({
     }
   };
 
-  const eff = img ? coverScale(img) * zoom : 1;
+  const eff = img ? coverScale(img, frameSize) * zoom : 1;
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-6">
@@ -237,7 +260,7 @@ export function PhotoEditor({
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={busy ? undefined : onCancel}
       />
-      <div className="rise-in relative w-full max-w-[360px] rounded-2xl border border-border bg-[#0c0c0c] p-5">
+      <div className="rise-in relative max-h-[92dvh] w-full max-w-[360px] overflow-y-auto rounded-2xl border border-border bg-[#0c0c0c] p-5">
         <h3 className="text-[16px] font-bold">Adjust your photo</h3>
         <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
           Drag to reposition — pinch, scroll or slide to zoom.
@@ -249,10 +272,8 @@ export function PhotoEditor({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerEnd}
           onPointerCancel={onPointerEnd}
-          className="relative mx-auto mt-4 overflow-hidden rounded-full border border-border bg-secondary"
+          className="relative mx-auto mt-4 aspect-square w-full max-w-[272px] overflow-hidden rounded-full border border-border bg-secondary"
           style={{
-            width: FRAME,
-            height: FRAME,
             touchAction: "none",
             cursor: img ? "grab" : "default",
           }}
