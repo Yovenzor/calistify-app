@@ -10,8 +10,12 @@ const TABS = [
   { to: "/app/records", label: "Records", icon: Trophy, end: false },
 ] as const;
 
-/** One shared iOS-style curve so every part of the switch moves together. */
-const EASE = "ease-[cubic-bezier(0.22,1,0.36,1)]";
+/**
+ * One shared slow in-out curve + duration so every part of the switch glides
+ * together instead of snapping — no fast start, no abrupt stop.
+ */
+const EASE = "ease-[cubic-bezier(0.65,0,0.35,1)]";
+const DURATION = "duration-[500ms]";
 
 /**
  * Floating pill tab bar — the mobile replacement for the desktop sidebar.
@@ -31,7 +35,8 @@ export function BottomNav() {
               aria-label={label}
               className={({ isActive }) =>
                 cn(
-                  "flex h-11 items-center rounded-full transition-colors duration-300",
+                  "flex h-11 items-center rounded-full transition-colors",
+                  DURATION,
                   EASE,
                   isActive
                     ? "bg-primary/15 text-primary"
@@ -47,11 +52,12 @@ export function BottomNav() {
                   <span
                     aria-hidden={!isActive}
                     className={cn(
-                      "overflow-hidden whitespace-nowrap text-[12px] font-semibold leading-none transition-all duration-300",
+                      "overflow-hidden whitespace-nowrap text-[12px] font-semibold leading-none transition-all",
+                      DURATION,
                       EASE,
                       isActive
                         ? "max-w-[96px] translate-x-0 pr-3.5 opacity-100"
-                        : "max-w-0 -translate-x-1.5 opacity-0",
+                        : "max-w-0 -translate-x-2 opacity-0",
                     )}
                   >
                     {label}
