@@ -17,8 +17,8 @@ const TABS = [
  */
 export function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-      <ul className="flex w-full max-w-[440px] items-center justify-between rounded-full border border-border/80 bg-[#0a0a0a]/95 p-1.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <ul className="flex max-w-full items-center justify-center gap-1 rounded-full border border-border/80 bg-[#0a0a0a]/95 p-1.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.9)] backdrop-blur-xl">
         {TABS.map(({ to, label, icon: Icon, end }) => (
           <li key={to} className="flex">
             <NavLink
