@@ -1,10 +1,11 @@
 import { BottomNav } from "@/components/BottomNav";
+import { EntryGate } from "@/components/EntryGate";
 import { Onboarding } from "@/components/Onboarding";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAthlete } from "@/hooks/use-athlete";
 import { useSession } from "@/lib/session";
 import { Loader2, Play } from "lucide-react";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
 /**
@@ -17,6 +18,9 @@ export function AppShell() {
   const { workout, elapsedMs } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
+  // True once the athlete submits their name — plays the slat-gate opening
+  // over the swap into the app (the gate self-removes after the sequence).
+  const [entryGate, setEntryGate] = useState(false);
 
   // Warm the tab page chunks as soon as the shell mounts, so the first visit
   // to each section never waits on code splitting — tab switches feel instant
@@ -42,7 +46,7 @@ export function AppShell() {
   if (!profile || !profile.onboarded) {
     return (
       <div className="mx-auto min-h-dvh w-full max-w-[440px] bg-background">
-        <Onboarding />
+        <Onboarding onEnter={() => setEntryGate(true)} />
       </div>
     );
   }
@@ -135,6 +139,7 @@ export function AppShell() {
       )}
 
       {!isActiveWorkoutRoute && <BottomNav />}
+      {entryGate && <EntryGate />}
     </div>
   );
 }

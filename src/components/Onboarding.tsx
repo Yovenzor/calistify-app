@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { Activity, ArrowRight, ChartLine, Medal, User } from "lucide-react";
 import { useMutation } from "convex/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 
 const FEATURES = [
@@ -14,44 +14,21 @@ const FEATURES = [
 ] as const;
 
 /**
- * Entrance gate timing — nine hidden slats wipe in from the left
- * (staggered but almost together), the lime seams glow while a scan line
- * sweeps and the wordmark appears, then the slats slide out to the right
- * like an opening that reveals the screen. Total ≈ 1.66s.
- */
-const SLATS = 9;
-const IN_MS = 380;
-const IN_STAGGER = 35;
-const OUT_BASE = 820;
-const OUT_STAGGER = 45;
-const OUT_MS = 480;
-const GATE_MS = OUT_BASE + (SLATS - 1) * OUT_STAGGER + OUT_MS;
-
-/**
  * Minimal first-run screen. The entered name is stored on the athlete
  * profile and used everywhere — it is never sample data.
  *
  * Deliberately composed differently from the auth screens (centered stack,
  * live monogram preview instead of the left-aligned marketing headline) so
- * it reads as a profile setup moment, not another auth step — announced by
- * a full-screen slat-gate opening on mount.
+ * it reads as a profile setup moment, not another auth step. Submitting the
+ * name fires `onEnter`, which plays the slat-gate opening into the app.
  */
-export function Onboarding() {
+export function Onboarding({ onEnter }: { onEnter: () => void }) {
   const completeOnboarding = useMutation(api.profiles.completeOnboarding);
   const { user } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [gate, setGate] = useState(true);
-
-  // Unmount the gate once it has fully opened (self-healing: if anything
-  // delays the timer, the content underneath is still fully usable because
-  // the overlay never captures pointer events).
-  useEffect(() => {
-    const timer = setTimeout(() => setGate(false), GATE_MS + 140);
-    return () => clearTimeout(timer);
-  }, []);
 
   const suggested = user?.name ?? "";
 
@@ -66,6 +43,9 @@ export function Onboarding() {
     setError(null);
     try {
       await completeOnboarding({ name: value });
+      // Signal the shell to play the entry gate, then swap to the app —
+      // the gate covers the swap and opens onto the dashboard.
+      onEnter();
       navigate("/app", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -87,51 +67,6 @@ export function Onboarding() {
 
   return (
     <div className="fade-in relative flex min-h-dvh flex-col bg-background px-6 pt-8 pb-10">
-      {/* ── Entrance gate ─────────────────────────────────────────── */}
-      {gate && (
-        <div
-          className="pointer-events-none fixed inset-0 z-[90] overflow-hidden"
-          aria-hidden="true"
-        >
-          {/* Dark veil so the screen is swallowed while the slats arrive */}
-          <div
-            className="absolute inset-0 bg-background"
-            style={{
-              animation:
-                "gate-veil 300ms ease-out both, gate-veil-out 320ms ease-in 700ms forwards",
-            }}
-          />
-
-          {/* The hidden bars: in from the left, hold, out to the right */}
-          {Array.from({ length: SLATS }, (_, i) => (
-            <div
-              key={i}
-              className="absolute left-0 w-full border-t border-primary/40 bg-[#070707]"
-              style={{
-                top: `${(i * 100) / SLATS}%`,
-                height: `calc(100% / ${SLATS} + 2px)`,
-                animation: [
-                  `slat-in ${IN_MS}ms cubic-bezier(0.83,0,0.17,1) ${i * IN_STAGGER}ms both`,
-                  `slat-out ${OUT_MS}ms cubic-bezier(0.83,0,0.17,1) ${OUT_BASE + i * OUT_STAGGER}ms forwards`,
-                ].join(", "),
-              }}
-            />
-          ))}
-
-          {/* Lime scan line sweeping down through the seams */}
-          <div className="gate-scan absolute top-0 left-0 h-[2px] w-full bg-primary shadow-[0_0_18px_2px_rgba(182,255,0,0.5)]" />
-
-          {/* Wordmark powering on in the middle of the hold */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <img
-              src="/assets/logo-transparent.png"
-              alt=""
-              className="gate-emblem h-9 w-auto"
-            />
-          </div>
-        </div>
-      )}
-
       <img
         src="/assets/logo-transparent.png"
         alt="Calistify"
