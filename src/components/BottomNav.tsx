@@ -15,7 +15,7 @@ const TABS = [
  * together instead of snapping — no fast start, no abrupt stop.
  */
 const EASE = "ease-[cubic-bezier(0.65,0,0.35,1)]";
-const DURATION = "duration-[500ms]";
+const DURATION = "duration-300";
 
 /**
  * Floating pill tab bar — the mobile replacement for the desktop sidebar.
