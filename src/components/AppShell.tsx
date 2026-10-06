@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAthlete } from "@/hooks/use-athlete";
 import { useSession } from "@/lib/session";
 import { Loader2, Play } from "lucide-react";
+import { Suspense, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
 /**
@@ -16,6 +17,19 @@ export function AppShell() {
   const { workout, elapsedMs } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Warm the tab page chunks as soon as the shell mounts, so the first visit
+  // to each section never waits on code splitting — tab switches feel instant
+  // from the very first tap.
+  useEffect(() => {
+    void Promise.all([
+      import("@/pages/Dashboard"),
+      import("@/pages/Workouts"),
+      import("@/pages/Exercises"),
+      import("@/pages/Progress"),
+      import("@/pages/Records"),
+    ]);
+  }, []);
 
   if (loading) {
     return (
@@ -94,7 +108,18 @@ export function AppShell() {
             : "fade-in flex-1 px-5 pt-5 pb-32"
         }
       >
-        <Outlet />
+        {/* Inner boundary: a lazily-loaded page suspends here instead of at
+            the root, so the bottom nav (and header) commit the route change
+            immediately and its animation never waits on a chunk download. */}
+        <Suspense
+          fallback={
+            <div className="flex min-h-[50vh] items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-primary" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
 
       {workout && !isActiveWorkoutRoute && (
