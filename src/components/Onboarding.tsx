@@ -20,9 +20,10 @@ const FEATURES = [
  * Deliberately composed differently from the auth screens (centered stack,
  * live monogram preview instead of the left-aligned marketing headline) so
  * it reads as a profile setup moment, not another auth step. Submitting the
- * name fires `onEnter`, which plays the entry ceremony into the app.
+ * name swaps into the app, where the shell plays the entry ceremony over
+ * the dashboard as it mounts.
  */
-export function Onboarding({ onEnter }: { onEnter: () => void }) {
+export function Onboarding() {
   const completeOnboarding = useMutation(api.profiles.completeOnboarding);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -43,9 +44,8 @@ export function Onboarding({ onEnter }: { onEnter: () => void }) {
     setError(null);
     try {
       await completeOnboarding({ name: value });
-      // Signal the shell to play the entry gate, then swap to the app —
-      // the gate covers the swap and opens onto the dashboard.
-      onEnter();
+      // Swap straight into the app — the shell's entry ceremony covers the
+      // swap and opens onto the dashboard.
       navigate("/app", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

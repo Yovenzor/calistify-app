@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAthlete } from "@/hooks/use-athlete";
 import { useSession } from "@/lib/session";
 import { Loader2, Play } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
 /**
@@ -18,10 +18,6 @@ export function AppShell() {
   const { workout, elapsedMs } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
-  // True once the athlete submits their name — plays the entry ceremony
-  // over the swap into the app (the gate self-removes after the sequence).
-  const [entryGate, setEntryGate] = useState(false);
-
   // Warm the tab page chunks as soon as the shell mounts, so the first visit
   // to each section never waits on code splitting — tab switches feel instant
   // from the very first tap.
@@ -46,7 +42,7 @@ export function AppShell() {
   if (!profile || !profile.onboarded) {
     return (
       <div className="mx-auto min-h-dvh w-full max-w-[440px] bg-background">
-        <Onboarding onEnter={() => setEntryGate(true)} />
+        <Onboarding />
       </div>
     );
   }
@@ -139,7 +135,10 @@ export function AppShell() {
       )}
 
       {!isActiveWorkoutRoute && <BottomNav />}
-      {entryGate && <EntryGate />}
+      {/* Entry ceremony — mounts with the shell, so it plays on every entry
+          into the app (app load, sign-in, after onboarding) and then
+          self-removes; it never replays on in-shell tab switches. */}
+      <EntryGate />
     </div>
   );
 }
