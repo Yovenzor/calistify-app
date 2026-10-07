@@ -1,105 +1,27 @@
-import { Dumbbell, House, ListChecks, TrendingUp, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 /**
  * Entry ceremony — played at the exact moment the athlete submits their
- * name. A veil swallows the screen, then four navigation pills rise out of
- * the depth and settle into a floating, isometric stack (the product's own
- * pill nav shot like a layered mockup), a sheen sweeps across the stack
- * while the wordmark powers on, and finally the stack rotates flat and
- * flies through the camera as a lime burst opens onto the dashboard.
- * Self-removes after ≈2.3s.
+ * name. Three coach-command words (PUSH. PULL. PROGRESS.) roll through a
+ * mask beat by beat while dots light up under them, then the wordmark
+ * rolls in and the whole composition pushes through the camera behind a
+ * lime flash as the veil dissolves onto the dashboard. Self-removes ≈2.4s.
  */
 
-const ENTER_AT = 240;
-const STAGGER = 130;
-const SHEEN_AT = 1000;
-const SHEEN_STAGGER = 110;
-const EXIT_AT = 1520;
-const OPEN_MS = 640;
-/** Total length — must stay in sync with the .gate-stage / .gate-fade
- *  durations declared in index.css. */
-const GATE_MS = EXIT_AT + OPEN_MS;
-const UNMOUNT_MS = GATE_MS + 160;
-
-/** Back-to-front layers of the stack. `y` / `z` offset each pill inside the
- *  tilted stage plane so they fan out diagonally with real depth, exactly
- *  like stacked nav bars floating over a surface. */
-const LAYERS = [
-  { kind: "ghost", y: -114, z: 0 },
-  { kind: "mid", y: -38, z: 26 },
-  { kind: "lime", y: 38, z: 52 },
-  { kind: "hero", y: 114, z: 78 },
+/** Each beat: a word and the ms at which it starts rolling. */
+const BEATS = [
+  { word: "PUSH.", at: 120 },
+  { word: "PULL.", at: 560 },
+  { word: "PROGRESS.", at: 1000 },
 ] as const;
-
-type LayerKind = (typeof LAYERS)[number]["kind"];
-
-const SHEEN_BG =
-  "linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)";
-
-function Pill({ kind, sheenDelay }: { kind: LayerKind; sheenDelay: number }) {
-  const sheen = (
-    <span
-      className="gate-sheen pointer-events-none absolute inset-y-0 left-0 w-1/3"
-      style={{ background: SHEEN_BG, animationDelay: `${sheenDelay}ms` }}
-    />
-  );
-
-  // Front pill: the real nav, with the active Home item expanded.
-  if (kind === "hero") {
-    return (
-      <div className="relative flex h-14 w-[300px] items-center justify-between overflow-hidden rounded-full border border-white/10 bg-[#0a0a0a] px-1.5 shadow-[0_36px_70px_-24px_rgba(0,0,0,0.95),0_14px_30px_-16px_rgba(0,0,0,0.9)]">
-        <span className="flex h-11 items-center gap-1 rounded-full bg-primary pr-3.5 pl-1 text-[#061400]">
-          <span className="flex size-9 items-center justify-center">
-            <House className="size-5" strokeWidth={2.4} />
-          </span>
-          <span className="text-[12px] font-extrabold">Home</span>
-        </span>
-        <span className="flex size-11 items-center justify-center text-[#4b4b4b]">
-          <Dumbbell className="size-5" strokeWidth={2} />
-        </span>
-        <span className="flex size-11 items-center justify-center text-[#4b4b4b]">
-          <ListChecks className="size-5" strokeWidth={2} />
-        </span>
-        <span className="flex size-11 items-center justify-center text-[#4b4b4b]">
-          <TrendingUp className="size-5" strokeWidth={2} />
-        </span>
-        <span className="flex size-11 items-center justify-center text-[#4b4b4b]">
-          <Trophy className="size-5" strokeWidth={2} />
-        </span>
-        {sheen}
-      </div>
-    );
-  }
-
-  const isLime = kind === "lime";
-  const dot = isLime ? "bg-[#061400]/30" : "bg-white/[0.06]";
-  const active = isLime
-    ? "bg-[#061400]/40"
-    : kind === "mid"
-      ? "bg-primary/60"
-      : "bg-white/[0.05]";
-  const shell = isLime
-    ? "border-primary bg-primary shadow-[0_30px_60px_-18px_rgba(182,255,0,0.35),0_14px_30px_-16px_rgba(0,0,0,0.9)]"
-    : "border-white/[0.07] bg-[#0c0c0c] shadow-[0_34px_64px_-22px_rgba(0,0,0,0.95),0_12px_26px_-14px_rgba(0,0,0,0.9)]";
-
-  // Layers behind the hero: soft mockup shapes, no real copy — depth only.
-  return (
-    <div
-      className={`relative flex h-14 w-[300px] items-center justify-between overflow-hidden rounded-full border px-4 ${shell}`}
-    >
-      <span className={`h-8 w-16 rounded-full ${active}`} />
-      <span className={`size-5 rounded-full ${dot}`} />
-      <span
-        className={`size-5 rounded-full ${kind === "mid" ? "bg-primary/60" : dot}`}
-      />
-      <span className={`size-5 rounded-full ${dot}`} />
-      <span className={`size-5 rounded-full ${dot}`} />
-      {sheen}
-    </div>
-  );
-}
+const WORD_IN_MS = 300;
+const WORD_OUT_AT = 380; // delay offset from the beat
+const WORD_OUT_MS = 260;
+/** Totals below must stay in sync with index.css (outro/veil at 1840ms). */
+const OUTRO_AT = 1840;
+const OUTRO_MS = 420;
+const UNMOUNT_MS = OUTRO_AT + OUTRO_MS + 160;
 
 export function EntryGate() {
   const [reducedMotion] = useState(
@@ -109,8 +31,8 @@ export function EntryGate() {
   );
   const [show, setShow] = useState(true);
 
-  // Unmount once the stack has flown through (pointer-events stay off the
-  // whole time, so the app underneath is never blocked, even if this lags).
+  // Unmount once the composition has pushed through (pointer-events stay
+  // off the whole time, so the app underneath is never blocked).
   useEffect(() => {
     const timer = setTimeout(
       () => setShow(false),
@@ -152,71 +74,70 @@ export function EntryGate() {
       className="pointer-events-none fixed inset-0 z-[90] overflow-hidden"
       aria-hidden="true"
     >
-      {/* Dark veil so the app is swallowed before the stack arrives */}
+      {/* Dark veil so the app is swallowed before the beats arrive */}
       <div
         className="absolute inset-0 bg-background"
         style={{
           animation:
-            "gate-veil 300ms ease-out both, gate-veil-out 640ms ease-in 1520ms forwards",
+            "gate-veil 260ms ease-out both, gate-veil-out 420ms ease-in 1840ms forwards",
         }}
       />
 
-      {/* Group opacity sits above the perspective chain so the 3D stacking
-          is never flattened while the scene fades in and out */}
-      <div className="gate-fade absolute inset-0">
-        <div className="absolute inset-0" style={{ perspective: "1200px" }}>
-          <div
-            className="gate-stage absolute inset-0"
-            style={{ transformStyle: "preserve-3d" }}
-          >
-            {/* Lime light pooling under the floating stack */}
+      {/* Everything that pushes through the camera together at the end */}
+      <div className="gate-outro absolute inset-0 flex flex-col items-center justify-center">
+        {/* Lime light gathering behind the wordmark */}
+        <div className="gate-glow absolute top-1/2 left-1/2 size-[380px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(182,255,0,0.13),transparent_65%)]" />
+
+        {/* Shockwave ring as the mark lands */}
+        <div className="gate-ring absolute top-1/2 left-1/2 size-40 rounded-full border border-primary/40" />
+
+        {/* Masked stage: words and wordmark roll through the same slot */}
+        <div className="relative h-[76px] w-full overflow-hidden">
+          {BEATS.map(({ word, at }, i) => (
             <div
-              className="absolute left-1/2 top-1/2 size-[460px] rounded-full"
+              key={word}
+              className="absolute inset-0 flex items-center justify-center"
               style={{
-                transform: "translate(-50%, -50%) translateZ(-70px)",
-                background:
-                  "radial-gradient(circle, rgba(182,255,0,0.14), transparent 65%)",
+                animation: `word-in ${WORD_IN_MS}ms cubic-bezier(0.22, 1, 0.36, 1) ${at}ms both, word-out ${WORD_OUT_MS}ms cubic-bezier(0.65, 0, 0.35, 1) ${at + WORD_OUT_AT}ms forwards`,
+              }}
+            >
+              <span
+                className={`text-[46px] leading-none font-extrabold tracking-[-0.03em] uppercase ${
+                  i === BEATS.length - 1 ? "text-primary" : "text-foreground"
+                }`}
+              >
+                {word}
+              </span>
+            </div>
+          ))}
+
+          {/* Wordmark rolls in on the last beat and pushes through camera */}
+          <div className="gate-mark absolute inset-0 flex flex-col items-center justify-center">
+            <img
+              src="/assets/logo-transparent.png"
+              alt=""
+              className="h-8 w-auto"
+            />
+            <span className="gate-rule mt-2.5 h-[3px] w-14 origin-left rounded-full bg-primary" />
+          </div>
+        </div>
+
+        {/* Beat dots — one lights per word */}
+        <div className="mt-7 flex gap-2">
+          {BEATS.map(({ word, at }) => (
+            <span
+              key={word}
+              className="size-1.5 rounded-full bg-primary/25"
+              style={{
+                animation: `dot-on 240ms cubic-bezier(0.22, 1, 0.36, 1) ${at}ms both`,
               }}
             />
-
-            {LAYERS.map((layer, i) => (
-              <div
-                key={layer.kind}
-                className="absolute left-1/2 top-1/2"
-                style={{
-                  transform: `translate(-50%, -50%) translateY(${layer.y}px) translateZ(${layer.z}px)`,
-                  transformStyle: "preserve-3d",
-                }}
-              >
-                <div
-                  className="gate-float"
-                  style={{ animationDelay: `${ENTER_AT + i * STAGGER}ms` }}
-                >
-                  <Pill
-                    kind={layer.kind}
-                    sheenDelay={SHEEN_AT + i * SHEEN_STAGGER}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Lime burst marking the moment the stack passes through the camera */}
-      <div
-        className="gate-burst absolute left-1/2 top-1/2 size-52 rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(182,255,0,0.5), rgba(182,255,0,0) 70%)",
-          border: "1px solid rgba(182,255,0,0.6)",
-        }}
-      />
-
-      {/* Wordmark powering on above the stack during the hold */}
-      <div className="gate-mark absolute inset-x-0 top-[15%] flex justify-center">
-        <img src="/assets/logo-transparent.png" alt="" className="h-8 w-auto" />
-      </div>
+      {/* Lime flash at the moment of the push-through */}
+      <div className="gate-flash absolute inset-0 bg-primary" />
     </div>,
     document.body,
   );
