@@ -18,7 +18,7 @@ export function AppShell() {
   const { workout, elapsedMs } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
-  // True once the athlete submits their name — plays the slat-gate opening
+  // True once the athlete submits their name — plays the entry ceremony
   // over the swap into the app (the gate self-removes after the sequence).
   const [entryGate, setEntryGate] = useState(false);
 

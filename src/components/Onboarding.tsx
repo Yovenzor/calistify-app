@@ -20,7 +20,7 @@ const FEATURES = [
  * Deliberately composed differently from the auth screens (centered stack,
  * live monogram preview instead of the left-aligned marketing headline) so
  * it reads as a profile setup moment, not another auth step. Submitting the
- * name fires `onEnter`, which plays the slat-gate opening into the app.
+ * name fires `onEnter`, which plays the entry ceremony into the app.
  */
 export function Onboarding({ onEnter }: { onEnter: () => void }) {
   const completeOnboarding = useMutation(api.profiles.completeOnboarding);

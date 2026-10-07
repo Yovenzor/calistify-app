@@ -214,28 +214,12 @@
   }
 }
 
-/* ── Onboarding entrance gate ─────────────────────────────────────
-   Nine hidden slats wipe in from the left (staggered, almost together),
-   the lime seams glow while a scan line sweeps and the mark appears,
-   then the slats slide out to the right — like an opening. */
-@keyframes slat-in {
-  from {
-    transform: translate3d(-104%, 0, 0);
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes slat-out {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(104%, 0, 0);
-  }
-}
-
+/* ── Entry ceremony ───────────────────────────────────────────────
+   Four nav pills rise out of the depth into a floating isometric
+   stack, a sheen sweeps across them while the wordmark powers on,
+   then the stack rotates flat and flies through the camera as a
+   lime burst opens onto the dashboard. Timings here must stay in
+   sync with EntryGate.tsx (total 2160ms, exit at 1520ms). */
 @keyframes gate-veil {
   from {
     opacity: 0;
@@ -254,46 +238,134 @@
   }
 }
 
-@keyframes gate-emblem {
+@keyframes gate-fade {
   0% {
     opacity: 0;
-    transform: scale(0.92);
   }
-  25% {
+  10% {
     opacity: 1;
-    transform: scale(1);
   }
-  60% {
+  86% {
     opacity: 1;
-    transform: scale(1.03);
   }
   100% {
     opacity: 0;
-    transform: scale(1.06);
   }
 }
 
-@keyframes gate-scan {
+@keyframes gate-stage {
+  0% {
+    transform: translateY(48px) translateZ(-220px) rotateX(66deg)
+      rotateZ(-52deg);
+  }
+  10% {
+    transform: translateY(6px) translateZ(-18px) rotateX(54deg) rotateZ(-41deg);
+  }
+  16% {
+    transform: translateY(0) translateZ(0) rotateX(49.5deg) rotateZ(-35deg);
+  }
+  22% {
+    transform: translateY(0) translateZ(0) rotateX(52deg) rotateZ(-38deg);
+  }
+  70% {
+    transform: translateY(0) translateZ(0) rotateX(52deg) rotateZ(-38deg);
+  }
+  86% {
+    transform: translateY(-6px) translateZ(140px) rotateX(40deg) rotateZ(-29deg);
+  }
+  100% {
+    transform: translateY(-16px) translateZ(680px) rotateX(3deg) rotateZ(-2deg);
+  }
+}
+
+@keyframes gate-float {
   0% {
     opacity: 0;
+    transform: translate3d(-64px, -120px, -340px);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes gate-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(-140%) skewX(-16deg);
   }
   12% {
     opacity: 1;
   }
-  85% {
+  88% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translate3d(0, calc(100dvh - 2px), 0);
+    transform: translateX(360%) skewX(-16deg);
   }
 }
 
-.gate-emblem {
-  animation: gate-emblem 560ms cubic-bezier(0.65, 0, 0.35, 1) 300ms both;
+@keyframes gate-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  16% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(3.4);
+  }
 }
 
-.gate-scan {
-  animation: gate-scan 360ms cubic-bezier(0.65, 0, 0.35, 1) 480ms both;
+@keyframes gate-mark {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(16px) scale(0.94);
+  }
+  25% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+  72% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(-14px) scale(1.06);
+  }
+}
+
+.gate-fade {
+  animation: gate-fade 2160ms linear both;
+}
+
+.gate-stage {
+  animation: gate-stage 2160ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.gate-float {
+  animation: gate-float 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gate-sheen {
+  animation: gate-sheen 700ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.gate-burst {
+  animation: gate-burst 720ms cubic-bezier(0.22, 1, 0.36, 1) 1520ms both;
+}
+
+.gate-mark {
+  animation: gate-mark 1600ms cubic-bezier(0.65, 0, 0.35, 1) 560ms both;
 }
