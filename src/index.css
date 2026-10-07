@@ -215,11 +215,10 @@
 }
 
 /* ── Entry ceremony ───────────────────────────────────────────────
-   An airlock seals with a charged lime seam, a gauge counts 1→10
-   REPS while its arc and ticks close the ring, the tenth rep fires
-   a shockwave, the numeral hands over to the wordmark — then the
-   doors split open onto the dashboard. Timings must stay in sync
-   with EntryGate.tsx (count starts 180ms, +9×110ms, doors 1860ms). */
+   Three coach-command words roll through a masked slot beat by beat
+   while dots light up, then the wordmark rolls in with its lime rule
+   and the whole stage pushes through the camera behind a lime flash.
+   Timings must stay in sync with EntryGate.tsx (outro at 1840ms). */
 @keyframes gate-veil {
   from {
     opacity: 0;
@@ -238,101 +237,29 @@
   }
 }
 
-@keyframes doors-in {
+@keyframes word-in {
   from {
-    opacity: 0;
+    transform: translateY(140%);
   }
   to {
-    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@keyframes door-up {
+@keyframes word-out {
   from {
     transform: translateY(0);
   }
   to {
-    transform: translateY(-100%);
+    transform: translateY(-140%);
   }
 }
 
-@keyframes door-down {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100%);
-  }
-}
-
-@keyframes seam-on {
+@keyframes mark-in {
   from {
     opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scene-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scene-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes count-pop {
-  0% {
-    opacity: 0;
-    transform: scale(1.35);
-  }
-  40% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes count-out {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.55) translateY(-14px);
-  }
-}
-
-@keyframes shock {
-  0% {
-    opacity: 0.95;
-    transform: translate(-50%, -50%) scale(0.5);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(2.6);
-  }
-}
-
-@keyframes logo-in {
-  from {
-    opacity: 0;
-    filter: blur(6px);
-    transform: translateY(28px);
+    filter: blur(8px);
+    transform: translateY(145%);
   }
   to {
     opacity: 1;
@@ -350,44 +277,87 @@
   }
 }
 
-.gate-doors {
-  animation: doors-in 240ms ease-out both;
+@keyframes ring-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+  25% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.9);
+  }
 }
 
-.gate-door-up {
-  animation: door-up 440ms cubic-bezier(0.65, 0, 0.35, 1) 1860ms both;
+@keyframes glow-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-.gate-door-down {
-  animation: door-down 440ms cubic-bezier(0.65, 0, 0.35, 1) 1860ms both;
+@keyframes dot-on {
+  0% {
+    opacity: 0.35;
+    background-color: rgb(182 255 0 / 0.25);
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    background-color: #b6ff00;
+    transform: scale(1);
+  }
 }
 
-.gate-seam {
-  animation: seam-on 200ms ease-out 1860ms both;
+@keyframes flash {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.26;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
-.gate-scene {
-  animation:
-    scene-in 260ms ease-out 180ms both,
-    scene-out 360ms ease-in 1840ms forwards;
+@keyframes outro {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(14px);
+    transform: scale(2.6);
+  }
 }
 
-.gate-count {
-  animation: count-out 260ms ease-in 1300ms both;
-}
-
-.count-pop {
-  animation: count-pop 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.gate-shock {
-  animation: shock 700ms ease-out 1170ms both;
-}
-
-.gate-logo {
-  animation: logo-in 340ms cubic-bezier(0.22, 1, 0.36, 1) 1340ms both;
+.gate-mark {
+  animation: mark-in 340ms cubic-bezier(0.22, 1, 0.36, 1) 1380ms both;
 }
 
 .gate-rule {
-  animation: rule-in 300ms cubic-bezier(0.22, 1, 0.36, 1) 1480ms both;
+  animation: rule-in 300ms cubic-bezier(0.22, 1, 0.36, 1) 1540ms both;
+}
+
+.gate-ring {
+  animation: ring-pop 800ms cubic-bezier(0.22, 1, 0.36, 1) 1380ms both;
+}
+
+.gate-glow {
+  animation: glow-in 600ms ease-out 1200ms both;
+}
+
+.gate-outro {
+  animation: outro 420ms cubic-bezier(0.7, 0, 0.84, 0) 1840ms both;
+}
+
+.gate-flash {
+  animation: flash 240ms ease-out 1840ms both;
 }
